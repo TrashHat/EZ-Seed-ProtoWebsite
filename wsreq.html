@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Request Detail</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="wsreq">
+
+  <nav class="navbar">
+    <span class="navbar-greeting">Welcome, Farmer!</span>
+    <div class="navbar-avatar"></div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Summary of Request</h1>
+    <p class="page-subtitle" id="wsreq-season"></p>
+
+    <div class="seed-list" id="wsreq-list">
+      <!-- Populated by main.js -->
+    </div>
+
+    <div class="status-row">
+      Status of Request: <span id="wsreq-status"></span>
+    </div>
+
+    <div style="margin-top: 2.5rem; text-align: center;">
+      <a href="trackrequests.html" class="btn btn-secondary">Back to Requests</a>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
