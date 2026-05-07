@@ -94,6 +94,13 @@ function initDropdowns() {
 const activeFilters = new Set();
 
 function initSeedFilter() {
+  // Restore saved filters from previous page
+  const saved = localStorage.getItem('ezseed_filters');
+  if (saved) JSON.parse(saved).forEach(f => activeFilters.add(f));
+
+  updateFilterChips();
+  applyFilters();
+
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const f = chip.dataset.filter;
@@ -102,6 +109,7 @@ function initSeedFilter() {
       } else {
         activeFilters.has(f) ? activeFilters.delete(f) : activeFilters.add(f);
       }
+      localStorage.setItem('ezseed_filters', JSON.stringify([...activeFilters]));
       updateFilterChips();
       applyFilters();
     });
@@ -266,7 +274,7 @@ function initRequestDetail() {
 document.addEventListener('DOMContentLoaded', () => {
   const page = document.body.dataset.page;
   if (page === 'seedselect')     { initDropdowns(); initSeedFilter(); }
-  if (page === 'seedselect2')    initSeedSelection();
+  if (page === 'seedselect2')    { initSeedFilter(); initSeedSelection(); }
   if (page === 'requestsummary') initRequestSummary();
   if (page === 'seeddetail')     initSeedDetail();
   if (page === 'wsreq')          initRequestDetail();

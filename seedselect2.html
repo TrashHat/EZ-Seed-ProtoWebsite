@@ -22,50 +22,68 @@
     <h1 class="page-title">Select three desired seed varieties.</h1>
     <p class="page-subtitle">You may select at most one hybrid.</p>
 
+    <!-- Filter chips (carries over from seedselect) -->
+    <div class="filter-row">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="inbred">Inbred</button>
+      <button class="filter-chip" data-filter="hybrid">Hybrid</button>
+      <button class="filter-chip" data-filter="mao">MAO Recommended</button>
+      <button class="filter-chip" data-filter="pao">PAO Recommended</button>
+      <button class="filter-chip" data-filter="board">Board Recommended</button>
+    </div>
+
     <div class="seed-list">
 
       <!-- NSIC RC 222 -->
-      <div class="seed-card" data-seed-id="rc222">
-        <span class="seed-card-rank"></span>
-        <span class="seed-card-name">NSIC RC 222 (Tubigan 18)</span>
-        <div class="seed-card-badges">
-          <span class="badge badge-filled">Inbred</span>
-          <span class="badge badge-outline">MAO Recommended</span>
-          <span class="badge badge-outline">PAO Recommended</span>
-          <span class="badge badge-outline">Board Recommended</span>
+      <div class="seed-card-wrapper" data-type="inbred" data-mao="true" data-pao="true" data-board="true">
+        <div class="seed-card" data-seed-id="rc222">
+          <span class="seed-card-rank"></span>
+          <span class="seed-card-name">NSIC RC 222 (Tubigan 18)</span>
+          <div class="seed-card-badges">
+            <span class="badge badge-filled">Inbred</span>
+            <span class="badge badge-outline">MAO Recommended</span>
+            <span class="badge badge-outline">PAO Recommended</span>
+            <span class="badge badge-outline">Board Recommended</span>
+          </div>
         </div>
       </div>
 
       <!-- NSIC RC 200 -->
-      <div class="seed-card" data-seed-id="rc200">
-        <span class="seed-card-rank"></span>
-        <span class="seed-card-name">NSIC RC 200 (Tubigan 17)</span>
-        <div class="seed-card-badges">
-          <span class="badge badge-filled">Inbred</span>
-          <span class="badge badge-outline">MAO Recommended</span>
-          <span class="badge badge-outline">Board Recommended</span>
+      <div class="seed-card-wrapper" data-type="inbred" data-mao="true" data-pao="false" data-board="true">
+        <div class="seed-card" data-seed-id="rc200">
+          <span class="seed-card-rank"></span>
+          <span class="seed-card-name">NSIC RC 200 (Tubigan 17)</span>
+          <div class="seed-card-badges">
+            <span class="badge badge-filled">Inbred</span>
+            <span class="badge badge-outline">MAO Recommended</span>
+            <span class="badge badge-outline">Board Recommended</span>
+          </div>
         </div>
       </div>
 
       <!-- NSIC RC 460 -->
-      <div class="seed-card" data-seed-id="rc460">
-        <span class="seed-card-rank"></span>
-        <span class="seed-card-name">NSIC RC 460 (SGR 222)</span>
-        <div class="seed-card-badges">
-          <span class="badge badge-filled">Hybrid</span>
-          <span class="badge badge-outline">MAO Recommended</span>
-          <span class="badge badge-outline">PAO Recommended</span>
+      <div class="seed-card-wrapper" data-type="hybrid" data-mao="true" data-pao="true" data-board="false">
+        <div class="seed-card" data-seed-id="rc460">
+          <span class="seed-card-rank"></span>
+          <span class="seed-card-name">NSIC RC 460 (SGR 222)</span>
+          <div class="seed-card-badges">
+            <span class="badge badge-filled">Hybrid</span>
+            <span class="badge badge-outline">MAO Recommended</span>
+            <span class="badge badge-outline">PAO Recommended</span>
+          </div>
         </div>
       </div>
 
       <!-- NSIC RC 240 -->
-      <div class="seed-card" data-seed-id="rc240">
-        <span class="seed-card-rank"></span>
-        <span class="seed-card-name">NSIC RC 240 (Tubigan 20)</span>
-        <div class="seed-card-badges">
-          <span class="badge badge-filled">Inbred</span>
-          <span class="badge badge-outline">PAO Recommended</span>
-          <span class="badge badge-outline">Board Recommended</span>
+      <div class="seed-card-wrapper" data-type="inbred" data-mao="false" data-pao="true" data-board="true">
+        <div class="seed-card" data-seed-id="rc240">
+          <span class="seed-card-rank"></span>
+          <span class="seed-card-name">NSIC RC 240 (Tubigan 20)</span>
+          <div class="seed-card-badges">
+            <span class="badge badge-filled">Inbred</span>
+            <span class="badge badge-outline">PAO Recommended</span>
+            <span class="badge badge-outline">Board Recommended</span>
+          </div>
         </div>
       </div>
 
