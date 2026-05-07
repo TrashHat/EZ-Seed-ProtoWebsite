@@ -90,6 +90,44 @@ function initDropdowns() {
   });
 }
 
+// ── FILTER LOGIC — seedselect.html ────────────────────────────────────────
+const activeFilters = new Set();
+
+function initSeedFilter() {
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const f = chip.dataset.filter;
+      if (f === 'all') {
+        activeFilters.clear();
+      } else {
+        activeFilters.has(f) ? activeFilters.delete(f) : activeFilters.add(f);
+      }
+      updateFilterChips();
+      applyFilters();
+    });
+  });
+}
+
+function updateFilterChips() {
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    const f = chip.dataset.filter;
+    chip.classList.toggle('active', f === 'all' ? activeFilters.size === 0 : activeFilters.has(f));
+  });
+}
+
+function applyFilters() {
+  document.querySelectorAll('.seed-card-wrapper').forEach(wrapper => {
+    if (activeFilters.size === 0) { wrapper.style.display = ''; return; }
+    let show = true;
+    if (activeFilters.has('inbred')  && wrapper.dataset.type  !== 'inbred')  show = false;
+    if (activeFilters.has('hybrid')  && wrapper.dataset.type  !== 'hybrid')  show = false;
+    if (activeFilters.has('mao')     && wrapper.dataset.mao   !== 'true')    show = false;
+    if (activeFilters.has('pao')     && wrapper.dataset.pao   !== 'true')    show = false;
+    if (activeFilters.has('board')   && wrapper.dataset.board !== 'true')    show = false;
+    wrapper.style.display = show ? '' : 'none';
+  });
+}
+
 // ── SELECTION LOGIC — seedselect2.html ────────────────────────────────────
 let ranked = []; // ordered array of seed ids (index 0 = rank 1)
 
@@ -147,22 +185,42 @@ function refreshSelectionUI() {
 }
 
 // ── REQUEST SUMMARY — requestsummary.html ─────────────────────────────────
-function initRequestSummary() {
-  const raw  = localStorage.getItem('ezseed_selection');
+let summaryIds = [];
+
+function renderSummary() {
   const list = document.getElementById('summary-list');
   if (!list) return;
-
-  const ids = raw ? JSON.parse(raw) : ['rc222', 'rc460', 'rc240']; // fallback for direct nav
-  list.innerHTML = ids.map((id, i) => {
+  list.innerHTML = summaryIds.map((id, i) => {
     const seed = getSeed(id);
     if (!seed) return '';
     return `
       <div class="summary-card">
+        <div class="reorder-btns">
+          <button class="reorder-btn" data-idx="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''}>&#9650;</button>
+          <button class="reorder-btn" data-idx="${i}" data-dir="1"  ${i === summaryIds.length - 1 ? 'disabled' : ''}>&#9660;</button>
+        </div>
         <span class="summary-num">${i + 1}.</span>
         <span class="summary-name">${seed.name}</span>
         <div class="seed-card-badges">${buildBadges(seed)}</div>
       </div>`;
   }).join('');
+
+  list.querySelectorAll('.reorder-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx    = parseInt(btn.dataset.idx);
+      const newIdx = idx + parseInt(btn.dataset.dir);
+      if (newIdx < 0 || newIdx >= summaryIds.length) return;
+      [summaryIds[idx], summaryIds[newIdx]] = [summaryIds[newIdx], summaryIds[idx]];
+      localStorage.setItem('ezseed_selection', JSON.stringify(summaryIds));
+      renderSummary();
+    });
+  });
+}
+
+function initRequestSummary() {
+  const raw = localStorage.getItem('ezseed_selection');
+  summaryIds = raw ? JSON.parse(raw) : ['rc222', 'rc460', 'rc240'];
+  renderSummary();
 }
 
 // ── SEED DETAIL — rc222.html ──────────────────────────────────────────────
@@ -207,7 +265,7 @@ function initRequestDetail() {
 // ── AUTO-INIT ──────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const page = document.body.dataset.page;
-  if (page === 'seedselect')     initDropdowns();
+  if (page === 'seedselect')     { initDropdowns(); initSeedFilter(); }
   if (page === 'seedselect2')    initSeedSelection();
   if (page === 'requestsummary') initRequestSummary();
   if (page === 'seeddetail')     initSeedDetail();

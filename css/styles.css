@@ -512,3 +512,54 @@ body {
   justify-content: center;
   gap: 0.75rem;
 }
+
+/* ── FILTER CHIPS (seedselect) ──────────────────────── */
+.filter-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.filter-chip {
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--card-bg);
+  background: transparent;
+  color: var(--text-olive);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+.filter-chip:hover { background: var(--card-bg); }
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-olive);
+}
+
+/* ── REORDER BUTTONS (requestsummary) ───────────────── */
+.reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+.reorder-btn {
+  background: none;
+  border: 1.5px solid #aaa;
+  border-radius: 5px;
+  width: 26px;
+  height: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--text-olive);
+  transition: background 0.15s;
+  padding: 0;
+}
+.reorder-btn:hover:not(:disabled) { background: var(--card-bg); }
+.reorder-btn:disabled { opacity: 0.25; cursor: not-allowed; }

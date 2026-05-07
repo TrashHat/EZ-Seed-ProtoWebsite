@@ -21,10 +21,20 @@
   <div class="page">
     <h1 class="page-title">Select desired seed variety.</h1>
 
+    <!-- Filter chips -->
+    <div class="filter-row">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="inbred">Inbred</button>
+      <button class="filter-chip" data-filter="hybrid">Hybrid</button>
+      <button class="filter-chip" data-filter="mao">MAO Recommended</button>
+      <button class="filter-chip" data-filter="pao">PAO Recommended</button>
+      <button class="filter-chip" data-filter="board">Board Recommended</button>
+    </div>
+
     <div class="seed-list">
 
       <!-- NSIC RC 222 -->
-      <div>
+      <div class="seed-card-wrapper" data-type="inbred" data-mao="true" data-pao="true" data-board="true">
         <div class="seed-card">
           <span class="seed-card-name">NSIC RC 222 (Tubigan 18)</span>
           <div class="seed-card-badges">
@@ -42,7 +52,7 @@
       </div>
 
       <!-- NSIC RC 200 -->
-      <div>
+      <div class="seed-card-wrapper" data-type="inbred" data-mao="true" data-pao="false" data-board="true">
         <div class="seed-card">
           <span class="seed-card-name">NSIC RC 200 (Tubigan 17)</span>
           <div class="seed-card-badges">
@@ -59,7 +69,7 @@
       </div>
 
       <!-- NSIC RC 460 -->
-      <div>
+      <div class="seed-card-wrapper" data-type="hybrid" data-mao="true" data-pao="true" data-board="false">
         <div class="seed-card">
           <span class="seed-card-name">NSIC RC 460 (SGR 222)</span>
           <div class="seed-card-badges">
@@ -76,7 +86,7 @@
       </div>
 
       <!-- NSIC RC 240 -->
-      <div>
+      <div class="seed-card-wrapper" data-type="inbred" data-mao="false" data-pao="true" data-board="true">
         <div class="seed-card">
           <span class="seed-card-name">NSIC RC 240 (Tubigan 20)</span>
           <div class="seed-card-badges">
