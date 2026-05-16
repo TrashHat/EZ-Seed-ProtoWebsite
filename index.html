@@ -17,7 +17,10 @@
       <form id="login-form">
         <p id="login-error" class="login-error">Invalid username or password.</p>
         <input id="login-user" class="login-field" type="text"     placeholder="Username" autocomplete="username"     required>
-        <input id="login-pass" class="login-field" type="password" placeholder="Password" autocomplete="current-password" required>
+        <div class="login-pass-wrap">
+          <input id="login-pass" class="login-field" type="password" placeholder="Password" autocomplete="current-password" required>
+          <button type="button" id="toggle-pass" class="toggle-pass-btn" aria-label="Show password">&#128065;</button>
+        </div>
         <button type="submit" class="btn-login">Log In</button>
       </form>
       <p class="login-hint">Farmers: FarmerA or FarmerB &nbsp;|&nbsp; DA: DAOfficer or DABoard</p>

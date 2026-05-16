@@ -290,6 +290,11 @@ function initLogin() {
     }
   });
 
+  document.getElementById('toggle-pass')?.addEventListener('click', () => {
+    const pass = document.getElementById('login-pass');
+    pass.type = pass.type === 'password' ? 'text' : 'password';
+  });
+
   document.getElementById('reset-all-btn')?.addEventListener('click', () => {
     if (confirm('Reset ALL data for all users? This cannot be undone.')) {
       resetAllData();
