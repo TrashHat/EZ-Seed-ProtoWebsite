@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Order Seeds</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="seed-order">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="index.html" class="navbar-home">&#8592; Home</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, Farmer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Select your preferred seed variety.</h1>
+
+    <div style="text-align:center; margin-bottom:1.25rem;">
+      <span class="budget-pill" id="budget-display">Number of Allotted Sacks Left: 20</span>
+    </div>
+
+    <div class="seed-order-rows">
+
+      <div class="seed-order-row" data-seed-id="rc222">
+        <div class="qty-counter">
+          <button class="qty-btn" data-dir="-1">&#8722;</button>
+          <span class="qty-display">0</span>
+          <button class="qty-btn" data-dir="1">&#43;</button>
+        </div>
+        <div class="seed-order-card">
+          <span class="seed-row-name">NSIC RC 222 (Tubigan 18)</span>
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc222">i</button>
+        </div>
+        <span class="sack-avail">110 sacks left</span>
+      </div>
+
+      <div class="seed-order-row" data-seed-id="rc216">
+        <div class="qty-counter">
+          <button class="qty-btn" data-dir="-1">&#8722;</button>
+          <span class="qty-display">0</span>
+          <button class="qty-btn" data-dir="1">&#43;</button>
+        </div>
+        <div class="seed-order-card">
+          <span class="seed-row-name">NSIC RC 216 (Tubigan 17)</span>
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc216">i</button>
+        </div>
+        <span class="sack-avail">110 sacks left</span>
+      </div>
+
+      <div class="seed-order-row" data-seed-id="rc402">
+        <div class="qty-counter">
+          <button class="qty-btn" data-dir="-1">&#8722;</button>
+          <span class="qty-display">0</span>
+          <button class="qty-btn" data-dir="1">&#43;</button>
+        </div>
+        <div class="seed-order-card">
+          <span class="seed-row-name">NSIC RC 402 (Tubigan 36)</span>
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc402">i</button>
+        </div>
+        <span class="sack-avail">110 sacks left</span>
+      </div>
+
+      <div class="seed-order-row" data-seed-id="rc72h">
+        <div class="qty-counter">
+          <button class="qty-btn" data-dir="-1">&#8722;</button>
+          <span class="qty-display">0</span>
+          <button class="qty-btn" data-dir="1">&#43;</button>
+        </div>
+        <div class="seed-order-card">
+          <span class="seed-row-name">PSB RC 72H (Mestizo 1)</span>
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc72h">i</button>
+        </div>
+        <span class="sack-avail">110 sacks left</span>
+      </div>
+
+      <div class="seed-order-row" data-seed-id="rc204h">
+        <div class="qty-counter">
+          <button class="qty-btn" data-dir="-1">&#8722;</button>
+          <span class="qty-display">0</span>
+          <button class="qty-btn" data-dir="1">&#43;</button>
+        </div>
+        <div class="seed-order-card">
+          <span class="seed-row-name">NSIC RC 204H (Mestiso 20)</span>
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc204h">i</button>
+        </div>
+        <span class="sack-avail">110 sacks left</span>
+      </div>
+
+    </div>
+
+    <div class="next-area">
+      <button id="add-btn" class="btn btn-primary" disabled>Add to Order</button>
+    </div>
+
+    <div class="legend">
+      <p class="legend-title">Legend</p>
+      <div class="legend-items">
+        <span class="legend-item"><span class="star star-mao">★</span> MAO Recommendation</span>
+        <span class="legend-item"><span class="star star-pao">★</span> PAO Recommendation</span>
+        <span class="legend-item"><span class="star star-board">★</span> Board Recommendation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seed Info Modal -->
+  <div class="modal-overlay" id="seed-modal">
+    <div class="modal-panel">
+      <button class="modal-close" id="modal-close">&#x2715;</button>
+      <img class="modal-img" id="modal-img" src="" alt="">
+      <div class="modal-body">
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-desc"  id="modal-desc"></p>
+        <div class="modal-badges" id="modal-badges"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

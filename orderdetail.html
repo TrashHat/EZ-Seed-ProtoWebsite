@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Order Detail</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="order-detail">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="trackrequests.html" class="navbar-home">&#8592; Back</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, Farmer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title" id="detail-season"></h1>
+
+    <div id="detail-list" class="seed-list-v2"></div>
+
+    <div class="detail-status-row">
+      <span class="detail-status-label">Status of Request:</span>
+      <span id="detail-status"></span>
+    </div>
+
+    <div class="next-area" style="margin-top:1.5rem;">
+      <button id="receive-btn" class="btn btn-primary" style="display:none;">Receive Order</button>
+    </div>
+
+    <div class="next-area">
+      <a href="trackrequests.html" class="btn btn-secondary">Back to Selection</a>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

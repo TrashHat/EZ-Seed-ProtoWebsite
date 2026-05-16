@@ -6,7 +6,7 @@
   <title>EZ-Seed — View Profile</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body data-page="farmer-profile">
 
   <nav class="navbar">
     <div class="navbar-left">
@@ -19,18 +19,25 @@
   </nav>
 
   <div class="page">
-    <div class="profile-layout">
-      <div class="profile-photo"></div>
-
-      <div class="profile-info">
-        <p class="profile-name">[NAME OF FARMER]'s Profile</p>
-        <div class="profile-fields">
+    <div class="profile-v2">
+      <div class="profile-photo-v2"></div>
+      <div class="profile-info-v2">
+        <p class="profile-name-v2">[NAME OF FARMER]'s Profile</p>
+        <div class="profile-fields-v2">
           <div>[Full Name]</div>
           <div>[Location]</div>
           <div>[Contact Number]</div>
           <div>[Number of hectares of farm]</div>
         </div>
-        <button class="btn btn-primary profile-edit-btn">Edit Profile</button>
+
+        <div class="verified-row">
+          <input type="checkbox" id="verified-checkbox" class="verified-checkbox">
+          <label class="verified-label" for="verified-checkbox">Verified</label>
+          <span id="verified-status" style="font-size:0.85rem; color:#666;"></span>
+        </div>
+
+        <button id="register-btn" class="btn btn-primary register-btn">Register</button>
+        <button id="reset-my-data-btn" class="btn btn-reset-farmer">Reset My Data</button>
       </div>
     </div>
   </div>
