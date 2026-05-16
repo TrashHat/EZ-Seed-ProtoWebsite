@@ -55,6 +55,22 @@ const SEEDS = [
 // ── KNOWN FARMERS ─────────────────────────────────────────────────────────
 const KNOWN_FARMERS = ['FarmerA', 'FarmerB'];
 
+// ── FARMER PROFILES (set by registration system, read-only in app) ─────────
+const FARMER_PROFILES = {
+  FarmerA: {
+    name:     'Juan dela Cruz',
+    location: 'Calauan, Laguna',
+    contact:  '0917-123-4567',
+    hectares: '2.5 ha'
+  },
+  FarmerB: {
+    name:     'Maria Santos',
+    location: 'Sta. Cruz, Laguna',
+    contact:  '0928-765-4321',
+    hectares: '1.8 ha'
+  }
+};
+
 // ── DEFAULT ORDERS (hardcoded, shown only for FarmerA) ────────────────────
 const DEFAULT_ORDERS = [
   {
@@ -139,6 +155,22 @@ function getSurveyVotes() {
     [...inbred, ...hybrid].forEach(id => { votes[id] = (votes[id] || 0) + 1; });
   });
   return votes;
+}
+
+function getSurveyVotesDetailed() {
+  const inbred = {}, hybrid = {}, pairs = {};
+  KNOWN_FARMERS.forEach(farmer => {
+    if (localStorage.getItem(`ezseed_${farmer}_survey_submitted`) !== 'true') return;
+    const inbredIds = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]');
+    const hybridIds = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]');
+    inbredIds.forEach(id => { inbred[id] = (inbred[id] || 0) + 1; });
+    hybridIds.forEach(id => { hybrid[id] = (hybrid[id] || 0) + 1; });
+    inbredIds.forEach(i => hybridIds.forEach(h => {
+      const key = `${i}||${h}`;
+      pairs[key] = (pairs[key] || 0) + 1;
+    }));
+  });
+  return { inbred, hybrid, pairs };
 }
 
 const STATUS_NEXT = { pending: 'germination', germination: 'pickup' };
@@ -664,6 +696,20 @@ function initSatisfaction() {
 // ── FARMER PROFILE ─────────────────────────────────────────────────────────
 function initFarmerProfile() {
   updateNavGreeting();
+
+  // Populate read-only profile fields from registration data
+  const profile = FARMER_PROFILES[currentUser()] || {};
+  const nameEl = document.getElementById('profile-name');
+  const locEl  = document.getElementById('profile-location');
+  const telEl  = document.getElementById('profile-contact');
+  const haEl   = document.getElementById('profile-hectares');
+  const headEl = document.getElementById('profile-heading');
+  if (nameEl)  nameEl.textContent  = profile.name     || currentUser();
+  if (locEl)   locEl.textContent   = profile.location || '—';
+  if (telEl)   telEl.textContent   = profile.contact  || '—';
+  if (haEl)    haEl.textContent    = profile.hectares || '—';
+  if (headEl)  headEl.textContent  = `${profile.name || currentUser()}'s Profile`;
+
   const checkbox    = document.getElementById('verified-checkbox');
   const registerBtn = document.getElementById('register-btn');
   const statusText  = document.getElementById('verified-status');
@@ -700,58 +746,83 @@ function initDAHome() {
 }
 
 // ── DA SURVEY ──────────────────────────────────────────────────────────────
+const CHART_COLORS_OLIVE = ['#3B4A0A','#6b8a1f','#9ab84a','#c5d68a','#dde8b0'];
+const CHART_COLORS_BLUE  = ['#1565c0','#42a5f5','#90caf9'];
+const CHART_COLORS_MIXED = ['#3B4A0A','#1565c0','#6b8a1f','#42a5f5','#9ab84a','#90caf9','#c5d68a','#ffb74d'];
+
+function makePieChart(canvasId, labels, data, colors) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const hasData = data.some(v => v > 0);
+  if (!hasData) {
+    const empty = document.createElement('p');
+    empty.className = 'da-chart-empty';
+    empty.textContent = 'No responses yet.';
+    ctx.parentElement.appendChild(empty);
+    ctx.style.display = 'none';
+    return;
+  }
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12, padding: 8 } }
+      }
+    }
+  });
+}
+
 function initDASurvey() {
   updateNavGreeting();
-  const votes = getSurveyVotes();
-  const totalVoters = KNOWN_FARMERS.filter(f => localStorage.getItem(`ezseed_${f}_survey_submitted`) === 'true').length;
+  const { inbred: inbredVotes, hybrid: hybridVotes, pairs: pairVotes } = getSurveyVotesDetailed();
+  const INBRED_SEEDS = SEEDS.filter(s => s.type === 'Inbred');
+  const HYBRID_SEEDS = SEEDS.filter(s => s.type === 'Hybrid');
 
-  let typeFilter = 'all';
-  const list = document.getElementById('da-survey-list');
-
-  function renderSurveyList() {
-    const sorted = SEEDS
-      .filter(s => typeFilter === 'all' || s.type.toLowerCase() === typeFilter)
-      .sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
-
-    if (list) {
-      list.innerHTML = sorted.map(seed => {
-        const v = votes[seed.id] || 0;
-        const pct = totalVoters > 0 ? Math.round((v / totalVoters) * 100) : 0;
-        return `
-          <div class="da-survey-row">
-            <div class="da-survey-row-left">
-              <span class="sum-row-name">${seed.name}</span>
-              <span class="badge badge-filled">${seed.type}</span>
-              ${buildStars(seed)}
-            </div>
-            <div class="da-vote-wrap">
-              <div class="da-vote-bar" style="width:${pct}%"></div>
-              <span class="da-vote-count">${v} vote${v !== 1 ? 's' : ''}</span>
-            </div>
-          </div>`;
-      }).join('') || '<p style="color:#888; text-align:center;">No survey responses yet.</p>';
-    }
+  function shortName(seed) {
+    return seed.name.replace(/.*\(/, '').replace(')', '');
   }
 
-  renderSurveyList();
+  makePieChart(
+    'chart-inbred',
+    INBRED_SEEDS.map(shortName),
+    INBRED_SEEDS.map(s => inbredVotes[s.id] || 0),
+    CHART_COLORS_OLIVE
+  );
 
-  document.querySelectorAll('.da-type-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      typeFilter = chip.dataset.type;
-      document.querySelectorAll('.da-type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === typeFilter));
-      renderSurveyList();
+  makePieChart(
+    'chart-hybrid',
+    HYBRID_SEEDS.map(shortName),
+    HYBRID_SEEDS.map(s => hybridVotes[s.id] || 0),
+    CHART_COLORS_BLUE
+  );
+
+  const pairEntries = Object.entries(pairVotes);
+  if (pairEntries.length > 0) {
+    const pairLabels = pairEntries.map(([key]) => {
+      const [i, h] = key.split('||');
+      const si = getSeed(i), sh = getSeed(h);
+      return `${si ? shortName(si) : i} + ${sh ? shortName(sh) : h}`;
     });
-  });
+    makePieChart('chart-pair', pairLabels, pairEntries.map(([, v]) => v), CHART_COLORS_MIXED);
+  } else {
+    makePieChart('chart-pair', [], [], []);
+  }
 
   // Board recommendations
-  const boardInbred = JSON.parse(localStorage.getItem('ezseed_board_inbred') || 'null');
-  const boardHybrid = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || 'null');
+  const boardSubmitted = localStorage.getItem('ezseed_board_submitted') === 'true';
+  const boardInbred = boardSubmitted ? JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]') : [];
+  const boardHybrid = boardSubmitted ? JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]') : [];
   const recEl = document.getElementById('board-recs');
   if (recEl) {
-    if (!boardInbred && !boardHybrid) {
+    if (!boardSubmitted || (boardInbred.length === 0 && boardHybrid.length === 0)) {
       recEl.innerHTML = '<p style="color:#888;">No board recommendations set yet.</p>';
     } else {
-      const ids = [...(boardInbred || []), ...(boardHybrid || [])];
+      const ids = [...boardInbred, ...boardHybrid];
       recEl.innerHTML = ids.map(id => {
         const seed = getSeed(id); if (!seed) return '';
         return `<div class="da-survey-row">
@@ -777,8 +848,38 @@ let daSelected = [];
 function initDASelectVarieties() {
   updateNavGreeting();
   const saved = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || '[]');
-  daSelected = [...saved];
 
+  if (saved.length > 0) {
+    // Summary mode: already allocated
+    const formEl = document.getElementById('da-variety-form');
+    if (formEl) formEl.style.display = 'none';
+    const summaryEl = document.getElementById('da-variety-summary');
+    if (summaryEl) {
+      summaryEl.style.display = '';
+      const list = document.getElementById('da-variety-summary-list');
+      if (list) {
+        list.innerHTML = saved.map(id => {
+          const seed = getSeed(id); if (!seed) return '';
+          return `
+            <div class="sum-row">
+              <div class="sum-row-left">
+                <span class="sum-row-name">${seed.name}</span>
+                <span class="badge badge-filled">${seed.type}</span>
+                ${buildStars(seed)}
+              </div>
+            </div>`;
+        }).join('');
+      }
+    }
+    document.getElementById('da-change-alloc-btn')?.addEventListener('click', () => {
+      localStorage.removeItem('ezseed_da_allocated_seeds');
+      window.location.reload();
+    });
+    return;
+  }
+
+  // Selection mode
+  daSelected = [];
   document.querySelectorAll('.da-variety-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', () => {
       const id = row.dataset.seedId;
@@ -838,6 +939,7 @@ function initDATrackRequests() {
     sel.addEventListener('change', () => { seasonFilter = sel.value; renderDAOrders(); });
   }
 
+
   function renderDAOrders() {
     let filtered = allOrders;
     if (statusFilter !== 'all') filtered = filtered.filter(o => o.status === statusFilter);
@@ -858,12 +960,9 @@ function initDATrackRequests() {
   populateSeasonFilter();
   renderDAOrders();
 
-  document.querySelectorAll('.da-status-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      statusFilter = chip.dataset.status;
-      document.querySelectorAll('.da-status-chip').forEach(c => c.classList.toggle('active', c.dataset.status === statusFilter));
-      renderDAOrders();
-    });
+  document.getElementById('da-status-filter')?.addEventListener('change', e => {
+    statusFilter = e.target.value;
+    renderDAOrders();
   });
 }
 
@@ -877,7 +976,22 @@ function initDAOrderDetail() {
   if (!order) return;
 
   const seasonEl = document.getElementById('detail-season');
-  if (seasonEl) seasonEl.textContent = `${farmer} — ${order.season}`;
+  if (seasonEl) seasonEl.textContent = order.season;
+
+  // Farmer info fields
+  const parts = order.season.split(' ');
+  const year = parts[0] || '';
+  const seasonName = parts.slice(1).join(' ') || order.season;
+
+  const profile = FARMER_PROFILES[farmer] || {};
+  const infoFarmer = document.getElementById('info-farmer');
+  if (infoFarmer) infoFarmer.textContent = profile.name || farmer;
+  const infoLocation = document.getElementById('info-location');
+  if (infoLocation) infoLocation.textContent = profile.location || '—';
+  const infoSeason = document.getElementById('info-season');
+  if (infoSeason) infoSeason.textContent = seasonName;
+  const infoYear = document.getElementById('info-year');
+  if (infoYear) infoYear.textContent = year;
 
   const list = document.getElementById('detail-list');
   if (list) {
@@ -914,6 +1028,140 @@ function initDAOrderDetail() {
 
 // ── DA VIEW PROFILE ────────────────────────────────────────────────────────
 function initDAViewProfile() {
+  updateNavGreeting();
+}
+
+// ── BOARD HOME ─────────────────────────────────────────────────────────────
+function initBoardHome() {
+  updateNavGreeting();
+  if (localStorage.getItem('ezseed_board_submitted') === 'true') {
+    const card = document.querySelector('.bento-card-v2[data-card="board-recs"]');
+    if (card) card.href = 'board-view.html';
+  }
+}
+
+// ── BOARD INBRED SELECTION ─────────────────────────────────────────────────
+let boardInbredSel = [];
+
+function initBoardInbred() {
+  updateNavGreeting();
+  if (localStorage.getItem('ezseed_board_submitted') === 'true') {
+    window.location.href = 'board-view.html'; return;
+  }
+  initSeedFilterV2();
+  initModal();
+  boardInbredSel = JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]');
+  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.info-btn-v2')) return;
+      const id = row.dataset.seedId;
+      const idx = boardInbredSel.indexOf(id);
+      if (idx !== -1) { boardInbredSel.splice(idx, 1); } else { boardInbredSel.push(id); }
+      refreshBoardInbredUI();
+    });
+  });
+  refreshBoardInbredUI();
+  document.getElementById('next-btn')?.addEventListener('click', () => {
+    if (boardInbredSel.length > 0) {
+      localStorage.setItem('ezseed_board_inbred', JSON.stringify(boardInbredSel));
+      window.location.href = 'board-hybrid.html';
+    }
+  });
+}
+
+function refreshBoardInbredUI() {
+  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
+    row.classList.toggle('selected', boardInbredSel.includes(row.dataset.seedId));
+  });
+  const btn = document.getElementById('next-btn');
+  if (btn) btn.disabled = boardInbredSel.length === 0;
+}
+
+// ── BOARD HYBRID SELECTION ─────────────────────────────────────────────────
+let boardHybridSel = [];
+
+function initBoardHybrid() {
+  updateNavGreeting();
+  if (localStorage.getItem('ezseed_board_submitted') === 'true') {
+    window.location.href = 'board-view.html'; return;
+  }
+  initSeedFilterV2();
+  initModal();
+  boardHybridSel = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]');
+  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.info-btn-v2')) return;
+      const id = row.dataset.seedId;
+      const idx = boardHybridSel.indexOf(id);
+      if (idx !== -1) { boardHybridSel.splice(idx, 1); } else { boardHybridSel.push(id); }
+      refreshBoardHybridUI();
+    });
+  });
+  refreshBoardHybridUI();
+  document.getElementById('next-btn')?.addEventListener('click', () => {
+    if (boardHybridSel.length > 0) {
+      localStorage.setItem('ezseed_board_hybrid', JSON.stringify(boardHybridSel));
+      window.location.href = 'board-summary.html';
+    }
+  });
+}
+
+function refreshBoardHybridUI() {
+  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
+    row.classList.toggle('selected', boardHybridSel.includes(row.dataset.seedId));
+  });
+  const btn = document.getElementById('next-btn');
+  if (btn) btn.disabled = boardHybridSel.length === 0;
+}
+
+// ── BOARD SUMMARY (confirm flow) ───────────────────────────────────────────
+function initBoardSummary() {
+  updateNavGreeting();
+  initModal();
+  const inbred = JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]');
+  const hybrid = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]');
+  renderBoardSummaryList([...inbred, ...hybrid]);
+  document.getElementById('confirm-btn')?.addEventListener('click', () => {
+    localStorage.setItem('ezseed_board_submitted', 'true');
+    window.location.href = 'board-confirmed.html';
+  });
+  document.getElementById('back-btn')?.addEventListener('click', () => {
+    window.location.href = 'board-hybrid.html';
+  });
+}
+
+// ── BOARD VIEW (read-only after submission) ────────────────────────────────
+function initBoardView() {
+  updateNavGreeting();
+  initModal();
+  const inbred = JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]');
+  const hybrid = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]');
+  renderBoardSummaryList([...inbred, ...hybrid]);
+}
+
+function renderBoardSummaryList(ids) {
+  const list = document.getElementById('board-summary-list');
+  if (!list) return;
+  list.innerHTML = ids.map(id => {
+    const seed = getSeed(id);
+    if (!seed) return '';
+    return `
+      <div class="sum-row">
+        <div class="sum-row-left">
+          <span class="sum-row-name">${seed.name}</span>
+          <span class="badge badge-filled">${seed.type}</span>
+          ${buildStars(seed)}
+        </div>
+        <button class="info-btn-v2" data-seed-id="${id}">i</button>
+      </div>`;
+  }).join('');
+  list.querySelectorAll('.info-btn-v2[data-seed-id]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openModal(btn.dataset.seedId); });
+  });
+}
+
+// ── BOARD VIEW PROFILE ─────────────────────────────────────────────────────
+function initBoardViewProfile() {
   updateNavGreeting();
 }
 
@@ -1079,6 +1327,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'da-trackrequests')   initDATrackRequests();
   if (page === 'da-orderdetail')     initDAOrderDetail();
   if (page === 'da-viewprofile')     initDAViewProfile();
+  // Board pages
+  if (page === 'board-home')         initBoardHome();
+  if (page === 'board-inbred')       initBoardInbred();
+  if (page === 'board-hybrid')       initBoardHybrid();
+  if (page === 'board-summary')      initBoardSummary();
+  if (page === 'board-view')         initBoardView();
+  if (page === 'board-viewprofile')  initBoardViewProfile();
   // Legacy pages
   if (page === 'seedselect')     { initDropdowns(); initSeedFilter(); }
   if (page === 'seedselect2')    { initSeedFilter(); initSeedSelection(); }

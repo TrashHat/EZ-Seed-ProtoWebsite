@@ -888,3 +888,83 @@ body {
 .filter-chip-v2.disabled {
   opacity: 0.4; cursor: not-allowed; pointer-events: none;
 }
+
+/* ── DA FILTER BAR (dark dropdown container) ──────────── */
+.da-filter-bar {
+  display: flex; gap: 0.6rem; flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  background: var(--header-bg);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+.da-filter-select {
+  padding: 0.35rem 0.7rem;
+  border: none; border-radius: 8px;
+  font-size: 0.85rem;
+  background: rgba(255,255,255,0.15);
+  color: #fff; cursor: pointer;
+  font-family: inherit; flex: 1; min-width: 130px;
+}
+.da-filter-select:disabled { opacity: 0.55; cursor: not-allowed; }
+.da-filter-select option { background: var(--text-dark); color: #fff; }
+
+/* ── DA PIE CHARTS ───────────────────────────────────── */
+.da-charts-row {
+  display: flex; gap: 1.25rem; flex-wrap: wrap;
+  margin-bottom: 2rem; justify-content: center;
+}
+.da-chart-wrap {
+  flex: 1; min-width: 180px; max-width: 260px;
+  background: #fff; border-radius: var(--radius);
+  padding: 1rem; text-align: center;
+}
+.da-chart-title {
+  font-size: 0.85rem; font-weight: 700;
+  color: var(--text-olive); margin-bottom: 0.5rem;
+}
+.da-chart-empty { font-size: 0.8rem; color: #999; margin-top: 0.5rem; }
+
+/* ── DA RECS TABLE ───────────────────────────────────── */
+.da-recs-table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+.da-recs-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.85rem; background: #fff;
+  border-radius: var(--radius); overflow: hidden;
+}
+.da-recs-table th {
+  background: var(--header-bg); color: #fff;
+  padding: 0.6rem 0.85rem; text-align: left; font-weight: 600;
+}
+.da-recs-table td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid #eee; color: var(--text-dark);
+}
+.da-recs-table tr:last-child td { border-bottom: none; }
+.da-recs-table tr:nth-child(even) td { background: #f8f7ef; }
+
+/* ── DA ORDER INFO CARD ──────────────────────────────── */
+.da-order-info {
+  background: var(--card-v2); border-radius: var(--radius);
+  padding: 0.85rem 1.25rem;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1.5rem; margin-bottom: 1.25rem;
+}
+.da-order-info-row { display: flex; flex-direction: column; }
+.da-order-info-label {
+  font-size: 0.72rem; color: #777; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.da-order-info-value {
+  font-size: 0.95rem; font-weight: 600; color: var(--text-olive);
+}
+
+/* ── BOARD INDEX SINGLE COLUMN ───────────────────────── */
+.bento-grid-v2.single-col {
+  grid-template-columns: 1fr; max-width: 300px;
+}
+
+/* ── DA VARIETY SUMMARY ──────────────────────────────── */
+.da-variety-summary-header {
+  text-align: center; color: var(--text-olive);
+  font-size: 1rem; font-weight: 600; margin-bottom: 1rem;
+}

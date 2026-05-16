@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Your Seed Recommendations</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="board-view">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="board-index.html" class="navbar-home">&#8592; Dashboard</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, DABoard!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Your Seed Recommendations</h1>
+
+    <div id="board-summary-list" class="seed-list-v2"></div>
+
+    <div class="legend">
+      <p class="legend-title">Legend</p>
+      <div class="legend-items">
+        <span class="legend-item"><span class="star star-mao">★</span> MAO Recommendation</span>
+        <span class="legend-item"><span class="star star-pao">★</span> PAO Recommendation</span>
+        <span class="legend-item"><span class="star star-board">★</span> Board Recommendation</span>
+      </div>
+    </div>
+
+    <div class="next-area">
+      <a href="board-index.html" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Seed Info Modal -->
+  <div class="modal-overlay" id="seed-modal">
+    <div class="modal-panel">
+      <button class="modal-close" id="modal-close">&#x2715;</button>
+      <img class="modal-img" id="modal-img" src="" alt="">
+      <div class="modal-body">
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-desc"  id="modal-desc"></p>
+        <div class="modal-badges" id="modal-badges"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

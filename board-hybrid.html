@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Select Hybrid Recommendation</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="board-hybrid">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="board-inbred.html" class="navbar-home">&#8592; Back</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, DABoard!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Select your preferred hybrid seed variety.</h1>
+
+    <div class="filter-row-v2">
+      <button class="chip-all filter-chip-v2 active" data-filter="all">All</button>
+      <button class="chip-mao filter-chip-v2" data-filter="mao">MAO Recommended</button>
+      <button class="chip-pao filter-chip-v2" data-filter="pao">PAO Recommended</button>
+      <button class="chip-board filter-chip-v2" data-filter="board">Board Recommended</button>
+    </div>
+
+    <div class="seed-list-v2">
+      <div class="seed-row" data-seed-id="rc72h">
+        <span class="seed-row-name">PSB RC 72H (Mestizo 1)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc72h">i</button>
+        </div>
+      </div>
+      <div class="seed-row" data-seed-id="rc204h">
+        <span class="seed-row-name">NSIC RC 204H (Mestiso 20)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+          <button class="info-btn-v2" data-seed-id="rc204h">i</button>
+        </div>
+      </div>
+      <div class="seed-row" data-seed-id="rc446h">
+        <span class="seed-row-name">NSIC RC 446H (Mestiso 73)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span>
+          <button class="info-btn-v2" data-seed-id="rc446h">i</button>
+        </div>
+      </div>
+      <div class="seed-row" data-seed-id="rc436">
+        <span class="seed-row-name">NSIC RC 436 (Tubigan 37)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span>
+          <button class="info-btn-v2" data-seed-id="rc436">i</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="next-area">
+      <button id="next-btn" class="btn btn-primary" disabled>Add to Request</button>
+    </div>
+  </div>
+
+  <!-- Seed Info Modal -->
+  <div class="modal-overlay" id="seed-modal">
+    <div class="modal-panel">
+      <button class="modal-close" id="modal-close">&#x2715;</button>
+      <img class="modal-img" id="modal-img" src="" alt="">
+      <div class="modal-body">
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-desc"  id="modal-desc"></p>
+        <div class="modal-badges" id="modal-badges"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
