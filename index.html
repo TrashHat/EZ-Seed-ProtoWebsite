@@ -3,47 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EZ-Seed — Dashboard</title>
+  <title>EZ-Seed — Log In</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body data-page="farmer-home" class="home-v2">
+<body data-page="login">
 
-  <nav class="navbar">
-    <div class="navbar-left">
-      <a href="login.html" class="navbar-home">&#8592; Log Out</a>
-    </div>
-    <div class="navbar-right">
-      <span class="navbar-greeting">Welcome, Farmer!</span>
-      <div class="navbar-avatar"></div>
-    </div>
-  </nav>
+  <div class="login-wrap">
+    <div class="login-card">
+      <img src="assets/ez-seed-logo.png" alt="EZ-Seed" class="login-logo">
+      <h1 class="login-title">EZ-Seed</h1>
+      <p class="login-sub">Log in to continue</p>
 
-  <div class="home-center-v2">
-    <img src="assets/ez-seed-logo.png" alt="EZ-Seed" class="home-logo-v2">
-    <h1 class="home-title-v2">EZ-Seed</h1>
-    <p class="home-sub-v2">Your seed, your choice.</p>
-
-    <div class="bento-grid-v2">
-      <a href="seedselect-inbred.html" class="bento-card-v2" data-requires-verified data-card="request-seeds">
-        <img src="assets/order seed.png" alt="Request Seeds">
-        <span>Request Seeds</span>
-      </a>
-      <a href="trackrequests.html" class="bento-card-v2" data-requires-verified>
-        <img src="assets/track request.png" alt="Track Orders">
-        <span>Track Orders</span>
-      </a>
-      <a href="viewprofile.html" class="bento-card-v2">
-        <img src="assets/view profile.png" alt="View Profile">
-        <span>View Profile</span>
-      </a>
-      <a href="seedorder.html" class="bento-card-v2" data-requires-verified data-card="order-seeds">
-        <img src="assets/track request.png" alt="Order Seeds">
-        <span>Order Seeds</span>
-      </a>
+      <form id="login-form">
+        <p id="login-error" class="login-error">Invalid username or password.</p>
+        <input id="login-user" class="login-field" type="text"     placeholder="Username" autocomplete="username"     required>
+        <input id="login-pass" class="login-field" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button type="submit" class="btn-login">Log In</button>
+      </form>
+      <p class="login-hint">Farmers: FarmerA or FarmerB &nbsp;|&nbsp; DA: DAOfficer or DABoard</p>
+      <button id="reset-all-btn" class="btn-reset-all">Reset All Data</button>
     </div>
   </div>
-
-  <div class="home-footer-v2"></div>
 
   <script src="js/main.js"></script>
 </body>
