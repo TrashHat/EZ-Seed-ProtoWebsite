@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Select Varieties to Allocate</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="da-selectvarieties">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="da-survey.html" class="navbar-home">&#8592; Back</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, DAOfficer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Select Seed Varieties to Allocate</h1>
+
+    <div style="text-align:center; margin-bottom:1.25rem;">
+      <span class="budget-pill" id="da-selected-count">0 of 5 selected</span>
+    </div>
+
+    <div class="seed-list-v2">
+
+      <div class="da-variety-row seed-row" data-seed-id="rc222">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 222 (Tubigan 18)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc216">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 216 (Tubigan 17)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc402">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 402 (Tubigan 36)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc436">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 436 (Tubigan 37)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc480">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 480 (SGR 8)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Inbred</span>
+          <span class="star star-mao">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc72h">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">PSB RC 72H (Mestizo 1)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc204h">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 204H (Mestiso 20)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
+        </div>
+      </div>
+
+      <div class="da-variety-row seed-row" data-seed-id="rc446h">
+        <span class="da-variety-check"></span>
+        <span class="seed-row-name">NSIC RC 446H (Mestiso 73)</span>
+        <div class="seed-row-right">
+          <span class="badge badge-filled">Hybrid</span>
+          <span class="star star-mao">★</span><span class="star star-pao">★</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="legend">
+      <p class="legend-title">Legend</p>
+      <div class="legend-items">
+        <span class="legend-item"><span class="star star-mao">★</span> MAO Recommendation</span>
+        <span class="legend-item"><span class="star star-pao">★</span> PAO Recommendation</span>
+        <span class="legend-item"><span class="star star-board">★</span> Board Recommendation</span>
+      </div>
+    </div>
+
+    <div class="next-area">
+      <button id="da-confirm-btn" class="btn btn-primary" disabled>Confirm Allocation</button>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

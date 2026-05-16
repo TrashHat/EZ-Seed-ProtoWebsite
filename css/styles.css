@@ -844,3 +844,47 @@ body {
   transition: border-color 0.15s, color 0.15s;
 }
 .btn-reset-farmer:hover { border-color: #c0392b; color: #c0392b; }
+
+/* ── DA SURVEY ────────────────────────────────────────── */
+.da-survey-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.da-survey-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border-radius: var(--radius);
+  padding: 0.65rem 1rem; gap: 1rem;
+}
+.da-survey-row-left { display: flex; align-items: center; gap: 0.5rem; flex: 1; flex-wrap: wrap; }
+.da-vote-wrap {
+  display: flex; align-items: center; gap: 0.5rem;
+  min-width: 130px;
+}
+.da-vote-bar {
+  height: 8px; background: var(--header-bg);
+  border-radius: 999px; min-width: 4px; max-width: 80px;
+  transition: width 0.3s;
+}
+.da-vote-count { font-size: 0.82rem; color: #555; white-space: nowrap; }
+.da-section-title {
+  font-size: 1rem; font-weight: 600; color: var(--text-olive);
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* ── DA VARIETY SELECTION ────────────────────────────── */
+.da-variety-row { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+.da-variety-check {
+  width: 22px; height: 22px; border: 2px solid #bbb;
+  border-radius: 4px; display: flex; align-items: center;
+  justify-content: center; font-size: 0.9rem; font-weight: 700;
+  color: var(--header-bg); flex-shrink: 0; transition: border-color 0.15s;
+}
+.da-variety-row.selected .da-variety-check { border-color: var(--header-bg); background: var(--accent); }
+.da-variety-row.selected { background: #e8f5d0; }
+
+/* ── DA TRACK REQUESTS ───────────────────────────────── */
+.da-select {
+  padding: 0.35rem 0.6rem; border: 1.5px solid #ccc;
+  border-radius: var(--radius); font-size: 0.85rem;
+  background: #fff; color: var(--text-dark); cursor: pointer;
+}
+.filter-chip-v2.disabled {
+  opacity: 0.4; cursor: not-allowed; pointer-events: none;
+}

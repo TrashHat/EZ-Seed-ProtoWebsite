@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Track Farmer Requests</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="da-trackrequests">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="da-index.html" class="navbar-home">&#8592; Dashboard</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, DAOfficer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Farmer Seed Orders</h1>
+
+    <!-- Status filter chips -->
+    <div class="filter-row-v2" style="margin-bottom:0.75rem;">
+      <button class="chip-all filter-chip-v2 da-status-chip active" data-status="all">All</button>
+      <button class="filter-chip-v2 da-status-chip" data-status="pending">Pending</button>
+      <button class="filter-chip-v2 da-status-chip" data-status="germination">Germination</button>
+      <button class="filter-chip-v2 da-status-chip" data-status="pickup">For Pick-Up</button>
+      <button class="filter-chip-v2 da-status-chip" data-status="received">Received</button>
+    </div>
+
+    <!-- Season filter -->
+    <div style="margin-bottom:1.25rem; display:flex; align-items:center; gap:0.75rem;">
+      <label style="font-size:0.9rem; color:var(--text-dark); font-weight:500;">Season:</label>
+      <select id="da-season-filter" class="da-select">
+        <option value="all">All Seasons</option>
+      </select>
+      <button class="filter-chip-v2 disabled" disabled title="Not available in prototype">Province</button>
+      <button class="filter-chip-v2 disabled" disabled title="Not available in prototype">Municipality</button>
+    </div>
+
+    <div id="da-orders-list" class="request-list orders-list-v2"></div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

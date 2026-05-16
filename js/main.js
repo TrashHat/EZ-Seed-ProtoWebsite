@@ -52,6 +52,9 @@ const SEEDS = [
   }
 ];
 
+// ── KNOWN FARMERS ─────────────────────────────────────────────────────────
+const KNOWN_FARMERS = ['FarmerA', 'FarmerB'];
+
 // ── DEFAULT ORDERS (hardcoded, shown only for FarmerA) ────────────────────
 const DEFAULT_ORDERS = [
   {
@@ -93,11 +96,52 @@ function getStock() {
 function saveStock(stock) { localStorage.setItem('ezseed_stock', JSON.stringify(stock)); }
 
 // ── ORDER HELPERS ──────────────────────────────────────────────────────────
+function applyStatusOverrides(orders) {
+  const overrides = JSON.parse(localStorage.getItem('ezseed_order_statuses') || '{}');
+  return orders.map(o => overrides[o.id] ? { ...o, status: overrides[o.id] } : o);
+}
+
 function getAllOrders() {
-  const dynamic = JSON.parse(localStorage.getItem(farmerKey('orders')) || '[]');
-  if (currentUser() === 'FarmerA') return [...DEFAULT_ORDERS, ...dynamic];
+  const dynamic = applyStatusOverrides(JSON.parse(localStorage.getItem(farmerKey('orders')) || '[]'));
+  if (currentUser() === 'FarmerA') return [...applyStatusOverrides(DEFAULT_ORDERS), ...dynamic];
   return dynamic;
 }
+
+function getAllFarmerOrders() {
+  const result = [];
+  applyStatusOverrides(DEFAULT_ORDERS).forEach(o => result.push({ ...o, farmer: 'FarmerA' }));
+  KNOWN_FARMERS.forEach(farmer => {
+    const orders = applyStatusOverrides(JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]'));
+    orders.forEach(o => result.push({ ...o, farmer }));
+  });
+  return result;
+}
+
+function setOrderStatus(farmer, orderId, newStatus) {
+  const dynamic = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
+  const idx = dynamic.findIndex(o => o.id === orderId);
+  if (idx !== -1) {
+    dynamic[idx].status = newStatus;
+    localStorage.setItem(`ezseed_${farmer}_orders`, JSON.stringify(dynamic));
+  } else {
+    const overrides = JSON.parse(localStorage.getItem('ezseed_order_statuses') || '{}');
+    overrides[orderId] = newStatus;
+    localStorage.setItem('ezseed_order_statuses', JSON.stringify(overrides));
+  }
+}
+
+function getSurveyVotes() {
+  const votes = {};
+  KNOWN_FARMERS.forEach(farmer => {
+    if (localStorage.getItem(`ezseed_${farmer}_survey_submitted`) !== 'true') return;
+    const inbred = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]');
+    const hybrid = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]');
+    [...inbred, ...hybrid].forEach(id => { votes[id] = (votes[id] || 0) + 1; });
+  });
+  return votes;
+}
+
+const STATUS_NEXT = { pending: 'germination', germination: 'pickup' };
 
 function getOrderById(id) {
   return getAllOrders().find(o => o.id === id);
@@ -200,7 +244,7 @@ function initLogin() {
     if ((user === 'FarmerA' || user === 'FarmerB') && pass === 'IAmTheFarmerNow') {
       localStorage.setItem('ezseed_user', user);
       localStorage.setItem('ezseed_role', 'farmer');
-      window.location.href = 'index.html';
+      window.location.href = 'dashboard.html';
     } else if (user === 'DAOfficer' && pass === 'IAmTheDANow') {
       localStorage.setItem('ezseed_user', user);
       localStorage.setItem('ezseed_role', 'daofficer');
@@ -426,6 +470,13 @@ let orderQty = {};
 function initSeedOrder() {
   updateNavGreeting();
   initModal();
+  // Hide seeds not in DA allocation (if allocation is set)
+  const allocated = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || 'null');
+  if (allocated) {
+    document.querySelectorAll('.seed-order-row[data-seed-id]').forEach(row => {
+      if (!allocated.includes(row.dataset.seedId)) row.style.display = 'none';
+    });
+  }
   SEEDS.forEach(s => { orderQty[s.id] = 0; });
   document.querySelectorAll('.qty-btn').forEach(btn => {
     btn.addEventListener('click', e => {
@@ -643,6 +694,229 @@ function initFarmerProfile() {
   });
 }
 
+// ── DA HOME ────────────────────────────────────────────────────────────────
+function initDAHome() {
+  updateNavGreeting();
+}
+
+// ── DA SURVEY ──────────────────────────────────────────────────────────────
+function initDASurvey() {
+  updateNavGreeting();
+  const votes = getSurveyVotes();
+  const totalVoters = KNOWN_FARMERS.filter(f => localStorage.getItem(`ezseed_${f}_survey_submitted`) === 'true').length;
+
+  let typeFilter = 'all';
+  const list = document.getElementById('da-survey-list');
+
+  function renderSurveyList() {
+    const sorted = SEEDS
+      .filter(s => typeFilter === 'all' || s.type.toLowerCase() === typeFilter)
+      .sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
+
+    if (list) {
+      list.innerHTML = sorted.map(seed => {
+        const v = votes[seed.id] || 0;
+        const pct = totalVoters > 0 ? Math.round((v / totalVoters) * 100) : 0;
+        return `
+          <div class="da-survey-row">
+            <div class="da-survey-row-left">
+              <span class="sum-row-name">${seed.name}</span>
+              <span class="badge badge-filled">${seed.type}</span>
+              ${buildStars(seed)}
+            </div>
+            <div class="da-vote-wrap">
+              <div class="da-vote-bar" style="width:${pct}%"></div>
+              <span class="da-vote-count">${v} vote${v !== 1 ? 's' : ''}</span>
+            </div>
+          </div>`;
+      }).join('') || '<p style="color:#888; text-align:center;">No survey responses yet.</p>';
+    }
+  }
+
+  renderSurveyList();
+
+  document.querySelectorAll('.da-type-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      typeFilter = chip.dataset.type;
+      document.querySelectorAll('.da-type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === typeFilter));
+      renderSurveyList();
+    });
+  });
+
+  // Board recommendations
+  const boardInbred = JSON.parse(localStorage.getItem('ezseed_board_inbred') || 'null');
+  const boardHybrid = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || 'null');
+  const recEl = document.getElementById('board-recs');
+  if (recEl) {
+    if (!boardInbred && !boardHybrid) {
+      recEl.innerHTML = '<p style="color:#888;">No board recommendations set yet.</p>';
+    } else {
+      const ids = [...(boardInbred || []), ...(boardHybrid || [])];
+      recEl.innerHTML = ids.map(id => {
+        const seed = getSeed(id); if (!seed) return '';
+        return `<div class="da-survey-row">
+          <div class="da-survey-row-left">
+            <span class="sum-row-name">${seed.name}</span>
+            <span class="badge badge-filled">${seed.type}</span>
+            ${buildStars(seed)}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  document.getElementById('allocate-btn')?.addEventListener('click', () => {
+    window.location.href = 'da-selectvarieties.html';
+  });
+}
+
+// ── DA SELECT VARIETIES ────────────────────────────────────────────────────
+const DA_MAX = 5;
+let daSelected = [];
+
+function initDASelectVarieties() {
+  updateNavGreeting();
+  const saved = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || '[]');
+  daSelected = [...saved];
+
+  document.querySelectorAll('.da-variety-row[data-seed-id]').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.seedId;
+      const idx = daSelected.indexOf(id);
+      if (idx !== -1) {
+        daSelected.splice(idx, 1);
+      } else {
+        if (daSelected.length >= DA_MAX) return;
+        daSelected.push(id);
+      }
+      refreshDAVarietyUI();
+    });
+  });
+
+  refreshDAVarietyUI();
+
+  document.getElementById('da-confirm-btn')?.addEventListener('click', () => {
+    if (daSelected.length === 0) return;
+    localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(daSelected));
+    window.location.href = 'da-varietiesset.html';
+  });
+}
+
+function refreshDAVarietyUI() {
+  document.querySelectorAll('.da-variety-row[data-seed-id]').forEach(row => {
+    const sel = daSelected.includes(row.dataset.seedId);
+    row.classList.toggle('selected', sel);
+    const chk = row.querySelector('.da-variety-check');
+    if (chk) chk.textContent = sel ? '✓' : '';
+  });
+  const pill = document.getElementById('da-selected-count');
+  if (pill) pill.textContent = `${daSelected.length} of ${DA_MAX} selected`;
+  const btn = document.getElementById('da-confirm-btn');
+  if (btn) btn.disabled = daSelected.length === 0;
+}
+
+// ── DA TRACK REQUESTS ──────────────────────────────────────────────────────
+function initDATrackRequests() {
+  updateNavGreeting();
+  let allOrders = getAllFarmerOrders();
+  let statusFilter = 'all';
+  let seasonFilter = 'all';
+  const list = document.getElementById('da-orders-list');
+
+  function getSeasons() {
+    return [...new Set(allOrders.map(o => o.season))];
+  }
+
+  function populateSeasonFilter() {
+    const sel = document.getElementById('da-season-filter');
+    if (!sel) return;
+    getSeasons().forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => { seasonFilter = sel.value; renderDAOrders(); });
+  }
+
+  function renderDAOrders() {
+    let filtered = allOrders;
+    if (statusFilter !== 'all') filtered = filtered.filter(o => o.status === statusFilter);
+    if (seasonFilter !== 'all') filtered = filtered.filter(o => o.season === seasonFilter);
+    if (!list) return;
+    if (filtered.length === 0) {
+      list.innerHTML = '<p style="text-align:center; color:#888; margin-top:1rem;">No orders match the filter.</p>';
+      return;
+    }
+    list.innerHTML = filtered.map(o => `
+      <div class="request-row">
+        <span class="request-season">${o.farmer} — ${o.season}</span>
+        <span class="${STATUS_CLASS[o.status]}">${STATUS_LABELS[o.status]}</span>
+        <a href="da-orderdetail.html?farmer=${o.farmer}&id=${o.id}" class="btn-details">See Details</a>
+      </div>`).join('');
+  }
+
+  populateSeasonFilter();
+  renderDAOrders();
+
+  document.querySelectorAll('.da-status-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      statusFilter = chip.dataset.status;
+      document.querySelectorAll('.da-status-chip').forEach(c => c.classList.toggle('active', c.dataset.status === statusFilter));
+      renderDAOrders();
+    });
+  });
+}
+
+// ── DA ORDER DETAIL ────────────────────────────────────────────────────────
+function initDAOrderDetail() {
+  updateNavGreeting();
+  const params = new URLSearchParams(window.location.search);
+  const farmer  = params.get('farmer') || 'FarmerA';
+  const orderId = params.get('id');
+  const order   = getAllFarmerOrders().find(o => o.farmer === farmer && o.id === orderId);
+  if (!order) return;
+
+  const seasonEl = document.getElementById('detail-season');
+  if (seasonEl) seasonEl.textContent = `${farmer} — ${order.season}`;
+
+  const list = document.getElementById('detail-list');
+  if (list) {
+    list.innerHTML = order.seeds.map(({ id, sacks }) => {
+      const seed = getSeed(id); if (!seed) return '';
+      return `
+        <div class="sum-row">
+          <div class="sum-row-left">
+            <span class="sum-row-name">${seed.name}</span>
+            <span class="badge badge-filled">${seed.type}</span>
+          </div>
+          <span class="sack-pill-dark">${sacks} sacks</span>
+        </div>`;
+    }).join('');
+  }
+
+  const statusEl = document.getElementById('detail-status');
+  if (statusEl) statusEl.innerHTML = `<span class="${STATUS_CLASS[order.status]}">${STATUS_LABELS[order.status]}</span>`;
+
+  const updateBtn = document.getElementById('da-update-status-btn');
+  if (updateBtn) {
+    const nextStatus = STATUS_NEXT[order.status];
+    if (!nextStatus) {
+      updateBtn.style.display = 'none';
+    } else {
+      updateBtn.textContent = `Mark as: ${STATUS_LABELS[nextStatus]}`;
+      updateBtn.addEventListener('click', () => {
+        setOrderStatus(farmer, orderId, nextStatus);
+        window.location.href = `da-orderdetail.html?farmer=${farmer}&id=${orderId}`;
+      });
+    }
+  }
+}
+
+// ── DA VIEW PROFILE ────────────────────────────────────────────────────────
+function initDAViewProfile() {
+  updateNavGreeting();
+}
+
 // ── LEGACY (old pages backward compat) ────────────────────────────────────
 function initDropdowns() {
   document.querySelectorAll('.dropdown-btn').forEach(btn => {
@@ -798,6 +1072,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'order-detail')   initOrderDetail();
   if (page === 'satisfaction')   { initSatisfaction(); }
   if (page === 'farmer-profile') initFarmerProfile();
+  // DA pages
+  if (page === 'da-home')            initDAHome();
+  if (page === 'da-survey')          initDASurvey();
+  if (page === 'da-selectvarieties') initDASelectVarieties();
+  if (page === 'da-trackrequests')   initDATrackRequests();
+  if (page === 'da-orderdetail')     initDAOrderDetail();
+  if (page === 'da-viewprofile')     initDAViewProfile();
   // Legacy pages
   if (page === 'seedselect')     { initDropdowns(); initSeedFilter(); }
   if (page === 'seedselect2')    { initSeedFilter(); initSeedSelection(); }

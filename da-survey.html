@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Seed Survey Results</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="da-survey">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="da-index.html" class="navbar-home">&#8592; Dashboard</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, DAOfficer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Farmer Seed Preference Survey</h1>
+
+    <!-- Type filter (functional) -->
+    <div class="filter-row-v2" style="margin-bottom:1rem;">
+      <button class="chip-all filter-chip-v2 da-type-chip active" data-type="all">All</button>
+      <button class="chip-mao filter-chip-v2 da-type-chip" data-type="inbred">Inbred</button>
+      <button class="chip-pao filter-chip-v2 da-type-chip" data-type="hybrid">Hybrid</button>
+      <button class="filter-chip-v2 disabled" disabled title="Not available in prototype">Province</button>
+      <button class="filter-chip-v2 disabled" disabled title="Not available in prototype">Municipality</button>
+    </div>
+
+    <!-- Survey results list -->
+    <div id="da-survey-list" class="da-survey-list"></div>
+
+    <!-- Board recommendations -->
+    <h2 class="da-section-title">Board Recommended Seed Combinations</h2>
+    <div id="board-recs" class="da-survey-list"></div>
+
+    <div class="next-area" style="margin-top:2rem;">
+      <button id="allocate-btn" class="btn btn-primary">Set Seed Types to be Allocated</button>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
