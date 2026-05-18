@@ -137,6 +137,10 @@ body {
   background: var(--accent);
   color: var(--text-olive);
 }
+.badge-your-pick {
+  background: #2e7d32;
+  color: #fff;
+}
 .badge-outline {
   background: #fff;
   border: 1px solid #aaa;
@@ -970,8 +974,18 @@ body {
   grid-template-columns: 1fr; max-width: 300px;
 }
 
+/* ── BOARD SELECTION INLINE STAR ─────────────────────── */
+.board-sel-star { font-size: 0.9rem; line-height: 1; }
+
 /* ── DA VARIETY SUMMARY ──────────────────────────────── */
 .da-variety-summary-header {
   text-align: center; color: var(--text-olive);
   font-size: 1rem; font-weight: 600; margin-bottom: 1rem;
+}
+
+/* ── BENTO CARD NOTE (shown below disabled cards) ────── */
+.card-note {
+  grid-column: 2;
+  text-align: center; font-size: 0.72rem;
+  color: var(--text-olive); opacity: 0.65;
 }

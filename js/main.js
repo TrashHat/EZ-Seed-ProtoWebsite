@@ -209,19 +209,59 @@ function resetFarmerData() {
 // ── SEED / ORDER LOOKUPS ───────────────────────────────────────────────────
 function getSeed(id)  { return SEEDS.find(s => s.id === id); }
 
+// Returns submitted recommendations (empty if board hasn't confirmed yet)
+function getRecommendations() {
+  if (localStorage.getItem('ezseed_board_submitted') !== 'true') return { mao: [], pao: [], board: [] };
+  return {
+    mao:   JSON.parse(localStorage.getItem('ezseed_board_mao')   || '[]'),
+    pao:   JSON.parse(localStorage.getItem('ezseed_board_pao')   || '[]'),
+    board: JSON.parse(localStorage.getItem('ezseed_board_board') || '[]')
+  };
+}
+
+// Returns in-progress selections regardless of submission state
+function getCurrentSelections() {
+  return {
+    mao:   JSON.parse(localStorage.getItem('ezseed_board_mao')   || '[]'),
+    pao:   JSON.parse(localStorage.getItem('ezseed_board_pao')   || '[]'),
+    board: JSON.parse(localStorage.getItem('ezseed_board_board') || '[]')
+  };
+}
+
 function buildStars(seed) {
+  const recs = getRecommendations();
   const s = [];
-  if (seed.mao)   s.push('<span class="star star-mao">★</span>');
-  if (seed.pao)   s.push('<span class="star star-pao">★</span>');
-  if (seed.board) s.push('<span class="star star-board">★</span>');
+  if (recs.mao.includes(seed.id))   s.push('<span class="star star-mao">★</span>');
+  if (recs.pao.includes(seed.id))   s.push('<span class="star star-pao">★</span>');
+  if (recs.board.includes(seed.id)) s.push('<span class="star star-board">★</span>');
   return s.join('');
 }
 
+function injectDynamicStars() {
+  document.querySelectorAll('[data-seed-id]').forEach(container => {
+    const id = container.dataset.seedId;
+    const seed = getSeed(id);
+    if (!seed) return;
+    const starsContainer = container.querySelector('.seed-row-right, .seed-order-card');
+    if (!starsContainer) return;
+    starsContainer.querySelectorAll('.star').forEach(s => s.remove());
+    const starsHtml = buildStars(seed);
+    if (!starsHtml) return;
+    const temp = document.createElement('span');
+    temp.innerHTML = starsHtml;
+    const infoBtn = starsContainer.querySelector('.info-btn-v2');
+    while (temp.firstChild) {
+      starsContainer.insertBefore(temp.firstChild, infoBtn || null);
+    }
+  });
+}
+
 function buildBadges(seed) {
+  const recs = getRecommendations();
   const p = [`<span class="badge badge-filled">${seed.type}</span>`];
-  if (seed.mao)   p.push('<span class="badge badge-outline">MAO Recommended</span>');
-  if (seed.pao)   p.push('<span class="badge badge-outline">PAO Recommended</span>');
-  if (seed.board) p.push('<span class="badge badge-outline">Board Recommended</span>');
+  if (recs.mao.includes(seed.id))   p.push('<span class="badge badge-outline">MAO Recommended</span>');
+  if (recs.pao.includes(seed.id))   p.push('<span class="badge badge-outline">PAO Recommended</span>');
+  if (recs.board.includes(seed.id)) p.push('<span class="badge badge-outline">Board Recommended</span>');
   return p.join('');
 }
 
@@ -329,11 +369,24 @@ function initFarmerHome() {
     .filter(o => o.status !== 'received')
     .reduce((total, o) => total + o.seeds.reduce((sum, s) => sum + s.sacks, 0), 0);
 
-  if (usedSacks >= ALLOTTED_SACKS) {
-    const orderCard = document.querySelector('.bento-card-v2[data-card="order-seeds"]');
-    if (orderCard) {
+  const orderCard = document.querySelector('.bento-card-v2[data-card="order-seeds"]');
+  if (orderCard) {
+    const allocated = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || 'null');
+    let noteText = '';
+    if (!allocated || allocated.length === 0) {
       orderCard.classList.add('disabled');
       orderCard.removeAttribute('href');
+      noteText = 'No seed allocated yet';
+    } else if (usedSacks >= ALLOTTED_SACKS) {
+      orderCard.classList.add('disabled');
+      orderCard.removeAttribute('href');
+      noteText = 'Order request sent already';
+    }
+    if (noteText) {
+      const note = document.createElement('p');
+      note.className = 'card-note';
+      note.textContent = noteText;
+      orderCard.after(note);
     }
   }
 }
@@ -363,14 +416,14 @@ function updateFilterChipsV2() {
 }
 
 function applyFiltersV2() {
+  const recs = getRecommendations();
   document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
-    const seed = getSeed(row.dataset.seedId);
-    if (!seed) return;
+    const id = row.dataset.seedId;
     if (activeFilters.size === 0) { row.style.display = ''; return; }
     let show = true;
-    if (activeFilters.has('mao')   && !seed.mao)   show = false;
-    if (activeFilters.has('pao')   && !seed.pao)   show = false;
-    if (activeFilters.has('board') && !seed.board) show = false;
+    if (activeFilters.has('mao')   && !recs.mao.includes(id))   show = false;
+    if (activeFilters.has('pao')   && !recs.pao.includes(id))   show = false;
+    if (activeFilters.has('board') && !recs.board.includes(id)) show = false;
     row.style.display = show ? '' : 'none';
   });
 }
@@ -382,6 +435,7 @@ function initSurveyInbred() {
   updateNavGreeting();
   initSeedFilterV2();
   initModal();
+  injectDynamicStars();
   document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.info-btn-v2')) return;
@@ -414,6 +468,7 @@ function initSurveyHybrid() {
   updateNavGreeting();
   initSeedFilterV2();
   initModal();
+  injectDynamicStars();
   document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.info-btn-v2')) return;
@@ -506,14 +561,41 @@ let orderQty = {};
 
 function initSeedOrder() {
   updateNavGreeting();
-  initModal();
-  // Hide seeds not in DA allocation (if allocation is set)
+
   const allocated = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || 'null');
-  if (allocated) {
-    document.querySelectorAll('.seed-order-row[data-seed-id]').forEach(row => {
-      if (!allocated.includes(row.dataset.seedId)) row.style.display = 'none';
-    });
+  const farmerPicks = new Set([
+    ...JSON.parse(localStorage.getItem(farmerKey('survey_inbred')) || '[]'),
+    ...JSON.parse(localStorage.getItem(farmerKey('survey_hybrid')) || '[]')
+  ]);
+  const ids = (allocated && allocated.length > 0) ? allocated : SEEDS.map(s => s.id);
+
+  const container = document.getElementById('seed-order-rows-container');
+  if (container) {
+    container.innerHTML = ids.map(id => {
+      const seed = getSeed(id);
+      if (!seed) return '';
+      const yourPick = farmerPicks.has(id) ? '<span class="badge badge-your-pick">✓ Your Pick</span>' : '';
+      return `
+        <div class="seed-order-row" data-seed-id="${id}">
+          <div class="qty-counter">
+            <button class="qty-btn" data-dir="-1">&#8722;</button>
+            <span class="qty-display">0</span>
+            <button class="qty-btn" data-dir="1">&#43;</button>
+          </div>
+          <div class="seed-order-card">
+            <span class="seed-row-name">${seed.name}</span>
+            <span class="badge badge-filled">${seed.type}</span>
+            ${buildStars(seed)}
+            ${yourPick}
+            <button class="info-btn-v2" data-seed-id="${id}">i</button>
+          </div>
+          <span class="sack-avail"></span>
+        </div>`;
+    }).join('');
   }
+
+  initModal();
+
   SEEDS.forEach(s => { orderQty[s.id] = 0; });
   document.querySelectorAll('.qty-btn').forEach(btn => {
     btn.addEventListener('click', e => {
@@ -819,16 +901,14 @@ function initDASurvey() {
   }
 
   // Board recommendations
-  const boardSubmitted = localStorage.getItem('ezseed_board_submitted') === 'true';
-  const boardInbred = boardSubmitted ? JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]') : [];
-  const boardHybrid = boardSubmitted ? JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]') : [];
+  const recs = getRecommendations();
+  const allRecIds = [...new Set([...recs.mao, ...recs.pao, ...recs.board])];
   const recEl = document.getElementById('board-recs');
   if (recEl) {
-    if (!boardSubmitted || (boardInbred.length === 0 && boardHybrid.length === 0)) {
+    if (allRecIds.length === 0) {
       recEl.innerHTML = '<p style="color:#888;">No board recommendations set yet.</p>';
     } else {
-      const ids = [...boardInbred, ...boardHybrid];
-      recEl.innerHTML = ids.map(id => {
+      recEl.innerHTML = allRecIds.map(id => {
         const seed = getSeed(id); if (!seed) return '';
         return `<div class="da-survey-row">
           <div class="da-survey-row-left">
@@ -885,6 +965,7 @@ function initDASelectVarieties() {
 
   // Selection mode
   daSelected = [];
+  injectDynamicStars();
   document.querySelectorAll('.da-variety-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', () => {
       const id = row.dataset.seedId;
@@ -1045,93 +1126,70 @@ function initBoardHome() {
   }
 }
 
-// ── BOARD INBRED SELECTION ─────────────────────────────────────────────────
-let boardInbredSel = [];
-
-function initBoardInbred() {
+// ── BOARD SELECTION SHARED HELPER ──────────────────────────────────────────
+function initBoardSelectionPage(storageKey, nextHref) {
   updateNavGreeting();
   if (localStorage.getItem('ezseed_board_submitted') === 'true') {
     window.location.href = 'board-view.html'; return;
   }
-  initSeedFilterV2();
   initModal();
-  boardInbredSel = JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]');
-  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
-    row.addEventListener('click', e => {
-      if (e.target.closest('.info-btn-v2')) return;
+  let sel = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+  function refresh() {
+    document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
       const id = row.dataset.seedId;
-      const idx = boardInbredSel.indexOf(id);
-      if (idx !== -1) { boardInbredSel.splice(idx, 1); } else { boardInbredSel.push(id); }
-      refreshBoardInbredUI();
+      const isSelected = sel.includes(id);
+      row.classList.toggle('selected', isSelected);
+      const star = row.querySelector('.board-sel-star');
+      if (star) star.style.visibility = isSelected ? 'visible' : 'hidden';
     });
-  });
-  refreshBoardInbredUI();
-  document.getElementById('next-btn')?.addEventListener('click', () => {
-    if (boardInbredSel.length > 0) {
-      localStorage.setItem('ezseed_board_inbred', JSON.stringify(boardInbredSel));
-      window.location.href = 'board-hybrid.html';
-    }
-  });
-}
-
-function refreshBoardInbredUI() {
-  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
-    row.classList.toggle('selected', boardInbredSel.includes(row.dataset.seedId));
-  });
-  const btn = document.getElementById('next-btn');
-  if (btn) btn.disabled = boardInbredSel.length === 0;
-}
-
-// ── BOARD HYBRID SELECTION ─────────────────────────────────────────────────
-let boardHybridSel = [];
-
-function initBoardHybrid() {
-  updateNavGreeting();
-  if (localStorage.getItem('ezseed_board_submitted') === 'true') {
-    window.location.href = 'board-view.html'; return;
   }
-  initSeedFilterV2();
-  initModal();
-  boardHybridSel = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]');
+
   document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.info-btn-v2')) return;
       const id = row.dataset.seedId;
-      const idx = boardHybridSel.indexOf(id);
-      if (idx !== -1) { boardHybridSel.splice(idx, 1); } else { boardHybridSel.push(id); }
-      refreshBoardHybridUI();
+      const idx = sel.indexOf(id);
+      if (idx !== -1) { sel.splice(idx, 1); } else { sel.push(id); }
+      refresh();
     });
   });
-  refreshBoardHybridUI();
+  refresh();
+
   document.getElementById('next-btn')?.addEventListener('click', () => {
-    if (boardHybridSel.length > 0) {
-      localStorage.setItem('ezseed_board_hybrid', JSON.stringify(boardHybridSel));
-      window.location.href = 'board-summary.html';
-    }
+    localStorage.setItem(storageKey, JSON.stringify(sel));
+    window.location.href = nextHref;
   });
 }
 
-function refreshBoardHybridUI() {
-  document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
-    row.classList.toggle('selected', boardHybridSel.includes(row.dataset.seedId));
-  });
-  const btn = document.getElementById('next-btn');
-  if (btn) btn.disabled = boardHybridSel.length === 0;
+// ── BOARD MAO PAGE ─────────────────────────────────────────────────────────
+function initBoardMAO() {
+  initBoardSelectionPage('ezseed_board_mao', 'board-pao.html');
+}
+
+// ── BOARD PAO PAGE ─────────────────────────────────────────────────────────
+function initBoardPAO() {
+  initBoardSelectionPage('ezseed_board_pao', 'board-board.html');
+}
+
+// ── BOARD BOARD PAGE ───────────────────────────────────────────────────────
+function initBoardBoard() {
+  initBoardSelectionPage('ezseed_board_board', 'board-summary.html');
 }
 
 // ── BOARD SUMMARY (confirm flow) ───────────────────────────────────────────
 function initBoardSummary() {
   updateNavGreeting();
   initModal();
-  const inbred = JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]');
-  const hybrid = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]');
-  renderBoardSummaryList([...inbred, ...hybrid]);
+  const sels = getCurrentSelections();
+  const allIds = [...new Set([...sels.mao, ...sels.pao, ...sels.board])];
+  renderBoardSummaryList(allIds, sels);
   document.getElementById('confirm-btn')?.addEventListener('click', () => {
     localStorage.setItem('ezseed_board_submitted', 'true');
     window.location.href = 'board-confirmed.html';
   });
   document.getElementById('back-btn')?.addEventListener('click', () => {
-    window.location.href = 'board-hybrid.html';
+    window.location.href = 'board-board.html';
   });
 }
 
@@ -1139,23 +1197,28 @@ function initBoardSummary() {
 function initBoardView() {
   updateNavGreeting();
   initModal();
-  const inbred = JSON.parse(localStorage.getItem('ezseed_board_inbred') || '[]');
-  const hybrid = JSON.parse(localStorage.getItem('ezseed_board_hybrid') || '[]');
-  renderBoardSummaryList([...inbred, ...hybrid]);
+  const recs = getRecommendations();
+  const allIds = [...new Set([...recs.mao, ...recs.pao, ...recs.board])];
+  renderBoardSummaryList(allIds, recs);
 }
 
-function renderBoardSummaryList(ids) {
+function renderBoardSummaryList(ids, recs) {
   const list = document.getElementById('board-summary-list');
   if (!list) return;
+  const r = recs || getRecommendations();
   list.innerHTML = ids.map(id => {
     const seed = getSeed(id);
     if (!seed) return '';
+    const stars = [];
+    if (r.mao.includes(id))   stars.push('<span class="star star-mao">★</span>');
+    if (r.pao.includes(id))   stars.push('<span class="star star-pao">★</span>');
+    if (r.board.includes(id)) stars.push('<span class="star star-board">★</span>');
     return `
       <div class="sum-row">
         <div class="sum-row-left">
           <span class="sum-row-name">${seed.name}</span>
           <span class="badge badge-filled">${seed.type}</span>
-          ${buildStars(seed)}
+          ${stars.join('')}
         </div>
         <button class="info-btn-v2" data-seed-id="${id}">i</button>
       </div>`;
@@ -1334,8 +1397,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'da-viewprofile')     initDAViewProfile();
   // Board pages
   if (page === 'board-home')         initBoardHome();
-  if (page === 'board-inbred')       initBoardInbred();
-  if (page === 'board-hybrid')       initBoardHybrid();
+  if (page === 'board-mao')          initBoardMAO();
+  if (page === 'board-pao')          initBoardPAO();
+  if (page === 'board-board')        initBoardBoard();
   if (page === 'board-summary')      initBoardSummary();
   if (page === 'board-view')         initBoardView();
   if (page === 'board-viewprofile')  initBoardViewProfile();

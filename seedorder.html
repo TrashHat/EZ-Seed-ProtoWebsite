@@ -25,84 +25,7 @@
       <span class="budget-pill" id="budget-display">Number of Allotted Sacks Left: 20</span>
     </div>
 
-    <div class="seed-order-rows">
-
-      <div class="seed-order-row" data-seed-id="rc222">
-        <div class="qty-counter">
-          <button class="qty-btn" data-dir="-1">&#8722;</button>
-          <span class="qty-display">0</span>
-          <button class="qty-btn" data-dir="1">&#43;</button>
-        </div>
-        <div class="seed-order-card">
-          <span class="seed-row-name">NSIC RC 222 (Tubigan 18)</span>
-          <span class="badge badge-filled">Inbred</span>
-          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
-          <button class="info-btn-v2" data-seed-id="rc222">i</button>
-        </div>
-        <span class="sack-avail">110 sacks left</span>
-      </div>
-
-      <div class="seed-order-row" data-seed-id="rc216">
-        <div class="qty-counter">
-          <button class="qty-btn" data-dir="-1">&#8722;</button>
-          <span class="qty-display">0</span>
-          <button class="qty-btn" data-dir="1">&#43;</button>
-        </div>
-        <div class="seed-order-card">
-          <span class="seed-row-name">NSIC RC 216 (Tubigan 17)</span>
-          <span class="badge badge-filled">Inbred</span>
-          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
-          <button class="info-btn-v2" data-seed-id="rc216">i</button>
-        </div>
-        <span class="sack-avail">110 sacks left</span>
-      </div>
-
-      <div class="seed-order-row" data-seed-id="rc402">
-        <div class="qty-counter">
-          <button class="qty-btn" data-dir="-1">&#8722;</button>
-          <span class="qty-display">0</span>
-          <button class="qty-btn" data-dir="1">&#43;</button>
-        </div>
-        <div class="seed-order-card">
-          <span class="seed-row-name">NSIC RC 402 (Tubigan 36)</span>
-          <span class="badge badge-filled">Inbred</span>
-          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
-          <button class="info-btn-v2" data-seed-id="rc402">i</button>
-        </div>
-        <span class="sack-avail">110 sacks left</span>
-      </div>
-
-      <div class="seed-order-row" data-seed-id="rc72h">
-        <div class="qty-counter">
-          <button class="qty-btn" data-dir="-1">&#8722;</button>
-          <span class="qty-display">0</span>
-          <button class="qty-btn" data-dir="1">&#43;</button>
-        </div>
-        <div class="seed-order-card">
-          <span class="seed-row-name">PSB RC 72H (Mestizo 1)</span>
-          <span class="badge badge-filled">Hybrid</span>
-          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
-          <button class="info-btn-v2" data-seed-id="rc72h">i</button>
-        </div>
-        <span class="sack-avail">110 sacks left</span>
-      </div>
-
-      <div class="seed-order-row" data-seed-id="rc204h">
-        <div class="qty-counter">
-          <button class="qty-btn" data-dir="-1">&#8722;</button>
-          <span class="qty-display">0</span>
-          <button class="qty-btn" data-dir="1">&#43;</button>
-        </div>
-        <div class="seed-order-card">
-          <span class="seed-row-name">NSIC RC 204H (Mestiso 20)</span>
-          <span class="badge badge-filled">Hybrid</span>
-          <span class="star star-mao">★</span><span class="star star-pao">★</span><span class="star star-board">★</span>
-          <button class="info-btn-v2" data-seed-id="rc204h">i</button>
-        </div>
-        <span class="sack-avail">110 sacks left</span>
-      </div>
-
-    </div>
+    <div id="seed-order-rows-container" class="seed-order-rows"></div>
 
     <div class="next-area">
       <button id="add-btn" class="btn btn-primary" disabled>Add to Order</button>
@@ -114,6 +37,7 @@
         <span class="legend-item"><span class="star star-mao">★</span> MAO Recommendation</span>
         <span class="legend-item"><span class="star star-pao">★</span> PAO Recommendation</span>
         <span class="legend-item"><span class="star star-board">★</span> Board Recommendation</span>
+        <span class="legend-item"><span class="badge badge-your-pick">✓ Your Pick</span> Your survey choice</span>
       </div>
     </div>
   </div>
