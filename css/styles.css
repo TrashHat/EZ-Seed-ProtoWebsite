@@ -989,3 +989,62 @@ body {
   text-align: center; font-size: 0.72rem;
   color: var(--text-olive); opacity: 0.65;
 }
+
+/* ── BENTO BADGE (pending count indicator) ───────────── */
+.bento-badge {
+  background: #c62828; color: #fff;
+  font-size: 0.7rem; font-weight: 700;
+  border-radius: 999px; padding: 0.1rem 0.5rem;
+  min-width: 1.3rem; text-align: center;
+}
+
+/* ── REGISTRATION FORM ───────────────────────────────── */
+.reg-form { display: flex; flex-direction: column; gap: 1.1rem; margin-top: 1.5rem; max-width: 480px; }
+.reg-field-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.reg-label { font-size: 0.85rem; font-weight: 600; color: var(--text-olive); }
+.reg-input {
+  padding: 0.65rem 1rem; border: 1.5px solid #ccc;
+  border-radius: var(--radius); font-size: 0.95rem;
+  font-family: inherit; color: var(--text-dark);
+  background: #fff;
+}
+.reg-input:focus { outline: none; border-color: var(--header-bg); }
+.reg-submit-btn { margin-top: 0.5rem; align-self: flex-start; }
+
+/* ── REGISTRATION STATUS (farmer profile) ────────────── */
+.reg-status-text {
+  font-size: 0.9rem; font-weight: 600;
+  padding: 0.4rem 0; margin-top: 0.75rem;
+}
+.reg-none     { color: #888; }
+.reg-pending  { color: #e65100; }
+.reg-rejected { color: #c62828; }
+.reg-approved { color: #2e7d32; }
+.reg-rejection-list {
+  margin: 0.4rem 0 0 1.1rem;
+  font-size: 0.82rem; color: var(--text-dark); line-height: 1.8;
+}
+
+/* ── REJECT REASONS MODAL ────────────────────────────── */
+.reject-reasons { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+.reject-reason-item {
+  display: flex; align-items: flex-start; gap: 0.5rem;
+  font-size: 0.88rem; color: var(--text-dark); cursor: pointer;
+}
+.reject-reason-item input[type="checkbox"] { margin-top: 0.15rem; flex-shrink: 0; accent-color: var(--header-bg); }
+.reject-others-text {
+  display: none; width: 100%; margin-top: 0.4rem;
+  padding: 0.5rem 0.75rem; border: 1.5px solid #ccc;
+  border-radius: var(--radius); font-size: 0.88rem;
+  font-family: inherit; resize: vertical;
+}
+.reject-others-text:focus { outline: none; border-color: var(--header-bg); }
+
+/* ── DANGER BUTTON ───────────────────────────────────── */
+.btn-danger {
+  background: #c62828; color: #fff; border: none;
+  padding: 0.6rem 1.4rem; border-radius: var(--radius);
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: filter 0.15s;
+}
+.btn-danger:hover { filter: brightness(0.88); }

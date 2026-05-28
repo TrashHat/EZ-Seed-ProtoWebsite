@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Registration Detail</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="da-registrationdetail">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="da-registrations.html" class="navbar-home">&#8592; Back</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, DAOfficer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Registration Application</h1>
+    <div id="reg-detail-body"></div>
+    <div id="reg-action-area"></div>
+  </div>
+
+  <!-- Rejection Reason Modal -->
+  <div class="modal-overlay" id="reject-modal">
+    <div class="modal-panel">
+      <button class="modal-close" id="reject-modal-close">&#x2715;</button>
+      <div class="modal-body">
+        <h2 class="modal-title">Reason for Rejection</h2>
+        <p class="modal-desc">Select all applicable reasons:</p>
+        <div class="reject-reasons">
+          <label class="reject-reason-item">
+            <input type="checkbox" value="Incomplete information"> Incomplete information
+          </label>
+          <label class="reject-reason-item">
+            <input type="checkbox" value="Invalid contact details"> Invalid contact details
+          </label>
+          <label class="reject-reason-item">
+            <input type="checkbox" value="Farm location outside coverage area"> Farm location outside coverage area
+          </label>
+          <label class="reject-reason-item">
+            <input type="checkbox" value="Duplicate application"> Duplicate application
+          </label>
+          <label class="reject-reason-item">
+            <input type="checkbox" value="Inconsistent farm details"> Inconsistent farm details
+          </label>
+          <label class="reject-reason-item">
+            <input type="checkbox" value="Unverifiable identity"> Unverifiable identity
+          </label>
+          <label class="reject-reason-item">
+            <input type="checkbox" id="reject-others-check"> Others
+          </label>
+          <textarea class="reject-others-text" id="reject-others-text" placeholder="Specify reason..." rows="2"></textarea>
+        </div>
+        <button id="confirm-reject-btn" class="btn btn-danger" style="margin-top:1.25rem; width:100%;">Confirm Rejection</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -781,55 +781,196 @@ function initSatisfaction() {
 }
 
 // ── FARMER PROFILE ─────────────────────────────────────────────────────────
+function getProfile(farmer) {
+  const regStatus = localStorage.getItem(`ezseed_${farmer}_reg_status`);
+  const regData   = JSON.parse(localStorage.getItem(`ezseed_${farmer}_registration`) || 'null');
+  if (regStatus === 'approved' && regData) return regData;
+  return FARMER_PROFILES[farmer] || {};
+}
+
 function initFarmerProfile() {
   updateNavGreeting();
+  const user    = currentUser();
+  const profile = getProfile(user);
 
-  // Populate read-only profile fields from registration data
-  const profile = FARMER_PROFILES[currentUser()] || {};
-  const nameEl = document.getElementById('profile-name');
-  const locEl  = document.getElementById('profile-location');
-  const telEl  = document.getElementById('profile-contact');
-  const haEl   = document.getElementById('profile-hectares');
   const headEl = document.getElementById('profile-heading');
-  if (nameEl)  nameEl.textContent  = profile.name     || currentUser();
-  if (locEl)   locEl.textContent   = profile.location || '—';
-  if (telEl)   telEl.textContent   = profile.contact  || '—';
-  if (haEl)    haEl.textContent    = profile.hectares || '—';
-  if (headEl)  headEl.textContent  = `${profile.name || currentUser()}'s Profile`;
+  if (headEl) headEl.textContent = `${profile.name || user}'s Profile`;
+  const nameEl = document.getElementById('profile-name');
+  if (nameEl) nameEl.textContent = profile.name || '—';
+  const locEl = document.getElementById('profile-location');
+  if (locEl) locEl.textContent = profile.location || '—';
+  const telEl = document.getElementById('profile-contact');
+  if (telEl) telEl.textContent = profile.contact || '—';
+  const haEl = document.getElementById('profile-hectares');
+  if (haEl) haEl.textContent = profile.hectares || '—';
 
-  const checkbox    = document.getElementById('verified-checkbox');
-  const registerBtn = document.getElementById('register-btn');
-  const statusText  = document.getElementById('verified-status');
+  const area      = document.getElementById('reg-status-area');
+  const regStatus = localStorage.getItem(farmerKey('reg_status'));
 
-  function updateStatus(v) {
-    if (statusText) statusText.textContent = v ? 'Verified' : 'Unverified';
-    if (checkbox)   checkbox.checked = v;
+  if (area) {
+    if (!regStatus) {
+      area.innerHTML = `
+        <p class="reg-status-text reg-none">Not yet registered.</p>
+        <a href="farmer-register.html" class="btn btn-primary" style="display:inline-block; margin-top:0.5rem;">Submit Registration</a>`;
+    } else if (regStatus === 'pending') {
+      area.innerHTML = `<p class="reg-status-text reg-pending">&#9203; Registration Pending — awaiting DA review.</p>`;
+    } else if (regStatus === 'rejected') {
+      const reasons = JSON.parse(localStorage.getItem(farmerKey('reg_rejection')) || '[]');
+      const reasonList = reasons.length > 0
+        ? `<ul class="reg-rejection-list">${reasons.map(r => `<li>${r}</li>`).join('')}</ul>` : '';
+      area.innerHTML = `
+        <p class="reg-status-text reg-rejected">&#10007; Registration Rejected</p>
+        ${reasonList}
+        <a href="farmer-register.html" class="btn btn-primary" style="display:inline-block; margin-top:0.75rem;">Resubmit Registration</a>`;
+    } else if (regStatus === 'approved') {
+      area.innerHTML = `<p class="reg-status-text reg-approved">&#10003; Verified</p>`;
+    }
   }
 
-  updateStatus(localStorage.getItem(farmerKey('verified')) === 'true');
-
-  checkbox?.addEventListener('change', () => {
-    localStorage.setItem(farmerKey('verified'), checkbox.checked ? 'true' : 'false');
-    updateStatus(checkbox.checked);
-  });
-
-  registerBtn?.addEventListener('click', () => {
-    const next = localStorage.getItem(farmerKey('verified')) !== 'true';
-    localStorage.setItem(farmerKey('verified'), next ? 'true' : 'false');
-    updateStatus(next);
-  });
-
   document.getElementById('reset-my-data-btn')?.addEventListener('click', () => {
-    if (confirm(`Reset all data for ${currentUser()}? This cannot be undone.`)) {
+    if (confirm(`Reset all data for ${user}? This cannot be undone.`)) {
       resetFarmerData();
-      updateStatus(false);
+      window.location.reload();
     }
+  });
+}
+
+// ── FARMER REGISTRATION FORM ───────────────────────────────────────────────
+function initFarmerRegister() {
+  updateNavGreeting();
+  const regStatus = localStorage.getItem(farmerKey('reg_status'));
+  if (regStatus === 'rejected') {
+    const existing = JSON.parse(localStorage.getItem(farmerKey('registration')) || 'null');
+    if (existing) {
+      const n = document.getElementById('reg-name');
+      const l = document.getElementById('reg-location');
+      const c = document.getElementById('reg-contact');
+      const h = document.getElementById('reg-hectares');
+      if (n) n.value = existing.name || '';
+      if (l) l.value = existing.location || '';
+      if (c) c.value = existing.contact || '';
+      if (h) h.value = existing.hectares || '';
+    }
+  }
+  document.getElementById('reg-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      name:     document.getElementById('reg-name').value.trim(),
+      location: document.getElementById('reg-location').value.trim(),
+      contact:  document.getElementById('reg-contact').value.trim(),
+      hectares: document.getElementById('reg-hectares').value.trim()
+    };
+    localStorage.setItem(farmerKey('registration'), JSON.stringify(data));
+    localStorage.setItem(farmerKey('reg_status'), 'pending');
+    localStorage.removeItem(farmerKey('reg_rejection'));
+    window.location.href = 'viewprofile.html';
   });
 }
 
 // ── DA HOME ────────────────────────────────────────────────────────────────
 function initDAHome() {
   updateNavGreeting();
+  const pending = KNOWN_FARMERS.filter(f => localStorage.getItem(`ezseed_${f}_reg_status`) === 'pending').length;
+  const badge = document.getElementById('reg-pending-badge');
+  if (badge && pending > 0) {
+    badge.textContent = pending;
+    badge.style.display = '';
+  }
+}
+
+// ── DA REGISTRATIONS LIST ──────────────────────────────────────────────────
+function initDARegistrations() {
+  updateNavGreeting();
+  const list = document.getElementById('reg-list');
+  if (!list) return;
+
+  const REG_LABEL = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+  const REG_CLASS = { pending: 'status-pending', approved: 'status-allocated', rejected: 'status-germination' };
+
+  const rows = KNOWN_FARMERS.map(farmer => {
+    const status = localStorage.getItem(`ezseed_${farmer}_reg_status`);
+    const data   = JSON.parse(localStorage.getItem(`ezseed_${farmer}_registration`) || 'null');
+    return { farmer, status, data };
+  }).filter(r => r.status);
+
+  if (rows.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#888; margin-top:2rem;">No registration applications yet.</p>';
+    return;
+  }
+
+  list.innerHTML = rows.map(({ farmer, status, data }) => `
+    <div class="request-row">
+      <span class="request-season">${data ? data.name : farmer} <span style="font-weight:400;font-size:0.82rem;">(${farmer})</span></span>
+      <span class="${REG_CLASS[status]}">${REG_LABEL[status]}</span>
+      <a href="da-registrationdetail.html?farmer=${farmer}" class="btn-details">Review</a>
+    </div>`).join('');
+}
+
+// ── DA REGISTRATION DETAIL ─────────────────────────────────────────────────
+function initDARegistrationDetail() {
+  updateNavGreeting();
+  const params  = new URLSearchParams(window.location.search);
+  const farmer  = params.get('farmer') || 'FarmerA';
+  const data    = JSON.parse(localStorage.getItem(`ezseed_${farmer}_registration`) || 'null');
+  const status  = localStorage.getItem(`ezseed_${farmer}_reg_status`) || 'pending';
+
+  const bodyEl = document.getElementById('reg-detail-body');
+  if (bodyEl && data) {
+    const REG_LABEL = { pending: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
+    bodyEl.innerHTML = `
+      <div class="da-order-info">
+        <div class="da-order-info-row"><span class="da-order-info-label">Farmer ID</span><span class="da-order-info-value">${farmer}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Full Name</span><span class="da-order-info-value">${data.name}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Location</span><span class="da-order-info-value">${data.location}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Contact</span><span class="da-order-info-value">${data.contact}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Farm Size</span><span class="da-order-info-value">${data.hectares}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Status</span><span class="da-order-info-value">${REG_LABEL[status] || status}</span></div>
+      </div>`;
+  }
+
+  const actionEl = document.getElementById('reg-action-area');
+  if (!actionEl) return;
+
+  if (status !== 'pending') {
+    const msg = status === 'approved' ? 'This application has been approved.' : 'This application has been rejected.';
+    actionEl.innerHTML = `<p style="text-align:center; margin-top:1.5rem; color:#888;">${msg}</p>`;
+    return;
+  }
+
+  actionEl.innerHTML = `
+    <div class="btn-row-v2" style="margin-top:1.5rem;">
+      <button id="approve-btn" class="btn btn-primary">Approve</button>
+      <button id="reject-btn"  class="btn btn-danger">Reject</button>
+    </div>`;
+
+  document.getElementById('approve-btn')?.addEventListener('click', () => {
+    localStorage.setItem(`ezseed_${farmer}_reg_status`, 'approved');
+    localStorage.setItem(`ezseed_${farmer}_verified`, 'true');
+    window.location.href = 'da-registrations.html';
+  });
+
+  const rejectModal = document.getElementById('reject-modal');
+  document.getElementById('reject-btn')?.addEventListener('click', () => rejectModal?.classList.add('open'));
+  document.getElementById('reject-modal-close')?.addEventListener('click', () => rejectModal?.classList.remove('open'));
+
+  document.getElementById('reject-others-check')?.addEventListener('change', e => {
+    const ta = document.getElementById('reject-others-text');
+    if (ta) ta.style.display = e.target.checked ? 'block' : 'none';
+  });
+
+  document.getElementById('confirm-reject-btn')?.addEventListener('click', () => {
+    const reasons = [];
+    document.querySelectorAll('.reject-reasons input[type="checkbox"]:not(#reject-others-check)').forEach(cb => {
+      if (cb.checked) reasons.push(cb.value);
+    });
+    const othersCheck = document.getElementById('reject-others-check');
+    const othersText  = document.getElementById('reject-others-text');
+    if (othersCheck?.checked && othersText?.value.trim()) reasons.push(othersText.value.trim());
+    localStorage.setItem(`ezseed_${farmer}_reg_status`, 'rejected');
+    localStorage.setItem(`ezseed_${farmer}_reg_rejection`, JSON.stringify(reasons));
+    localStorage.removeItem(`ezseed_${farmer}_verified`);
+    window.location.href = 'da-registrations.html';
+  });
 }
 
 // ── DA SURVEY ──────────────────────────────────────────────────────────────
@@ -1387,14 +1528,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'track-orders')   initTrackOrders();
   if (page === 'order-detail')   initOrderDetail();
   if (page === 'satisfaction')   { initSatisfaction(); }
-  if (page === 'farmer-profile') initFarmerProfile();
+  if (page === 'farmer-profile')  initFarmerProfile();
+  if (page === 'farmer-register') initFarmerRegister();
   // DA pages
-  if (page === 'da-home')            initDAHome();
-  if (page === 'da-survey')          initDASurvey();
-  if (page === 'da-selectvarieties') initDASelectVarieties();
-  if (page === 'da-trackrequests')   initDATrackRequests();
-  if (page === 'da-orderdetail')     initDAOrderDetail();
-  if (page === 'da-viewprofile')     initDAViewProfile();
+  if (page === 'da-home')                initDAHome();
+  if (page === 'da-survey')              initDASurvey();
+  if (page === 'da-selectvarieties')     initDASelectVarieties();
+  if (page === 'da-trackrequests')       initDATrackRequests();
+  if (page === 'da-orderdetail')         initDAOrderDetail();
+  if (page === 'da-viewprofile')         initDAViewProfile();
+  if (page === 'da-registrations')       initDARegistrations();
+  if (page === 'da-registrationdetail')  initDARegistrationDetail();
   // Board pages
   if (page === 'board-home')         initBoardHome();
   if (page === 'board-mao')          initBoardMAO();

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Farmer Registration</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="farmer-register">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="viewprofile.html" class="navbar-home">&#8592; Back</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, Farmer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Farmer Registration</h1>
+    <p class="page-subtitle">Fill in your details to submit a registration application to the DA Officer.</p>
+
+    <form id="reg-form" class="reg-form">
+      <div class="reg-field-group">
+        <label class="reg-label" for="reg-name">Full Name</label>
+        <input class="reg-input" id="reg-name" type="text" placeholder="e.g. Juan dela Cruz" required>
+      </div>
+      <div class="reg-field-group">
+        <label class="reg-label" for="reg-location">Location (Municipality, Province)</label>
+        <input class="reg-input" id="reg-location" type="text" placeholder="e.g. Calauan, Laguna" required>
+      </div>
+      <div class="reg-field-group">
+        <label class="reg-label" for="reg-contact">Contact Number</label>
+        <input class="reg-input" id="reg-contact" type="text" placeholder="e.g. 0917-123-4567" required>
+      </div>
+      <div class="reg-field-group">
+        <label class="reg-label" for="reg-hectares">Farm Size</label>
+        <input class="reg-input" id="reg-hectares" type="text" placeholder="e.g. 2.5 ha" required>
+      </div>
+      <button type="submit" class="btn btn-primary reg-submit-btn">Submit Application</button>
+    </form>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
