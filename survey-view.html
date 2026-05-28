@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EZ-Seed — Your Request Summary</title>
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body data-page="survey-view">
 
@@ -19,20 +20,46 @@
   </nav>
 
   <div class="page">
-    <h1 class="page-title">Your Request Summary</h1>
+    <h1 class="page-title">Summary of Preference Survey</h1>
 
     <div id="summary-list" class="seed-list-v2"></div>
 
-    <div class="legend">
-      <p class="legend-title">Legend</p>
-      <div class="legend-items">
-        <span class="legend-item"><span class="star star-mao">★</span> MAO Recommendation</span>
-        <span class="legend-item"><span class="star star-pao">★</span> PAO Recommendation</span>
-        <span class="legend-item"><span class="star star-board">★</span> Board Recommendation</span>
+    <div class="detail-status-row" style="margin-top:1.25rem;">
+      <span class="detail-status-label">Status of Request:</span>
+      <span id="survey-status-badge"></span>
+    </div>
+
+    <div id="survey-allocated" class="seed-list-v2" style="margin-top:0.75rem; display:none;"></div>
+
+    <div class="survey-results-header">
+      <h2 class="survey-results-title">Ongoing Seed Survey Results</h2>
+      <button class="btn-toggle-charts" id="toggle-charts-btn">Hide Charts</button>
+    </div>
+
+    <div id="hidden-charts-bar" style="display:none;"></div>
+
+    <div id="survey-charts-section">
+      <div class="da-charts-row">
+        <div class="da-chart-wrap">
+          <p class="da-chart-title">Inbred Varieties</p>
+          <canvas id="chart-sv-inbred"></canvas>
+        </div>
+        <div class="da-chart-wrap">
+          <p class="da-chart-title">Hybrid Varieties</p>
+          <canvas id="chart-sv-hybrid"></canvas>
+        </div>
+        <div class="da-chart-wrap">
+          <p class="da-chart-title">All Varieties</p>
+          <canvas id="chart-sv-all"></canvas>
+        </div>
+        <div class="da-chart-wrap">
+          <p class="da-chart-title">Most Common Pairs</p>
+          <canvas id="chart-sv-pairs"></canvas>
+        </div>
       </div>
     </div>
 
-    <div class="next-area">
+    <div class="next-area" style="margin-top:2rem;">
       <a href="dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
     </div>
   </div>

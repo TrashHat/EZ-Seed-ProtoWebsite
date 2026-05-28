@@ -74,26 +74,30 @@ const FARMER_PROFILES = {
 // ── DEFAULT ORDERS (hardcoded, shown only for FarmerA) ────────────────────
 const DEFAULT_ORDERS = [
   {
-    id: 'ds2026', season: '2026 Dry Season', status: 'received',
-    seeds: [{ id: 'rc216', sacks: 10 }, { id: 'rc72h', sacks: 5 }, { id: 'rc204h', sacks: 5 }]
+    id: 'ds2026', season: '2026 Dry Season', status: 'delivered',
+    seeds: [{ id: 'rc216', sacks: 20 }]
   },
   {
-    id: 'ws2026', season: '2026 Wet Season', status: 'pickup',
-    seeds: [{ id: 'rc216', sacks: 10 }, { id: 'rc72h', sacks: 5 }, { id: 'rc204h', sacks: 5 }]
+    id: 'ws2026', season: '2026 Wet Season', status: 'arrived_pao',
+    seeds: [{ id: 'rc216', sacks: 20 }]
   }
 ];
 
 const STATUS_LABELS = {
-  pending:     'Request Pending',
-  germination: 'Under Germination Test',
-  pickup:      'For Pick-Up',
-  received:    'Order Received'
+  decision_pending: 'Decision Pending',
+  decision_made:    'Decision Made',
+  shipping_pao:     'Shipping to PAO',
+  arrived_pao:      'Arrived at PAO',
+  for_pickup:       'For Pick-Up',
+  delivered:        'Delivered'
 };
 const STATUS_CLASS = {
-  pending:     'status-pending',
-  germination: 'status-germination',
-  pickup:      'status-pickup',
-  received:    'status-allocated'
+  decision_pending: 'status-pending',
+  decision_made:    'status-germination',
+  shipping_pao:     'status-pickup',
+  arrived_pao:      'status-pickup',
+  for_pickup:       'status-allocated',
+  delivered:        'status-allocated'
 };
 
 // ── SESSION / USER HELPERS ─────────────────────────────────────────────────
@@ -157,8 +161,27 @@ function getSurveyVotes() {
   return votes;
 }
 
-function getSurveyVotesDetailed() {
+function initSeedVotes() {
+  const stored = localStorage.getItem('ezseed_seed_votes');
+  if (stored && JSON.parse(stored).pairs) return;
+  localStorage.removeItem('ezseed_seed_votes');
   const inbred = {}, hybrid = {}, pairs = {};
+  const inbredSeeds = SEEDS.filter(s => s.type === 'Inbred');
+  const hybridSeeds = SEEDS.filter(s => s.type === 'Hybrid');
+  inbredSeeds.forEach(s => { inbred[s.id] = Math.floor(Math.random() * 16) + 5; });
+  hybridSeeds.forEach(s => { hybrid[s.id] = Math.floor(Math.random() * 12) + 4; });
+  inbredSeeds.forEach(i => hybridSeeds.forEach(h => {
+    if (Math.random() > 0.35) pairs[`${i.id}||${h.id}`] = Math.floor(Math.random() * 8) + 2;
+  }));
+  localStorage.setItem('ezseed_seed_votes', JSON.stringify({ inbred, hybrid, pairs }));
+}
+
+function getSurveyVotesDetailed() {
+  initSeedVotes();
+  const base  = JSON.parse(localStorage.getItem('ezseed_seed_votes'));
+  const inbred = { ...base.inbred };
+  const hybrid = { ...base.hybrid };
+  const pairs  = { ...(base.pairs || {}) };
   KNOWN_FARMERS.forEach(farmer => {
     if (localStorage.getItem(`ezseed_${farmer}_survey_submitted`) !== 'true') return;
     const inbredIds = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]');
@@ -173,7 +196,13 @@ function getSurveyVotesDetailed() {
   return { inbred, hybrid, pairs };
 }
 
-const STATUS_NEXT = { pending: 'germination', germination: 'pickup' };
+const STATUS_NEXT = {
+  decision_pending: 'decision_made',
+  decision_made:    'shipping_pao',
+  shipping_pao:     'arrived_pao',
+  arrived_pao:      'for_pickup',
+  for_pickup:       'delivered'
+};
 
 function getOrderById(id) {
   return getAllOrders().find(o => o.id === id);
@@ -194,6 +223,7 @@ function resetAllData() {
     if (k && k.startsWith('ezseed_')) keys.push(k);
   }
   keys.forEach(k => localStorage.removeItem(k));
+  initSeedVotes();
 }
 
 function resetFarmerData() {
@@ -357,37 +387,9 @@ function initFarmerHome() {
     return;
   }
 
-  // If survey already submitted, redirect Request Seeds card to read-only view
-  if (localStorage.getItem(farmerKey('survey_submitted')) === 'true') {
-    const reqCard = document.querySelector('.bento-card-v2[data-card="request-seeds"]');
-    if (reqCard) reqCard.href = 'survey-view.html';
-  }
-
-  // Check remaining allotment from dynamic (non-received) orders only
-  const dynamicOrders = JSON.parse(localStorage.getItem(farmerKey('orders')) || '[]');
-  const usedSacks = dynamicOrders
-    .filter(o => o.status !== 'received')
-    .reduce((total, o) => total + o.seeds.reduce((sum, s) => sum + s.sacks, 0), 0);
-
-  const orderCard = document.querySelector('.bento-card-v2[data-card="order-seeds"]');
-  if (orderCard) {
-    const allocated = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || 'null');
-    let noteText = '';
-    if (!allocated || allocated.length === 0) {
-      orderCard.classList.add('disabled');
-      orderCard.removeAttribute('href');
-      noteText = 'No seed allocated yet';
-    } else if (usedSacks >= ALLOTTED_SACKS) {
-      orderCard.classList.add('disabled');
-      orderCard.removeAttribute('href');
-      noteText = 'Order request sent already';
-    }
-    if (noteText) {
-      const note = document.createElement('p');
-      note.className = 'card-note';
-      note.textContent = noteText;
-      orderCard.after(note);
-    }
+  const surveyCard = document.querySelector('.bento-card-v2[data-card="seed-survey"]');
+  if (surveyCard && localStorage.getItem(farmerKey('survey_submitted')) === 'true') {
+    surveyCard.href = 'survey-view.html';
   }
 }
 
@@ -436,6 +438,9 @@ function initSurveyInbred() {
   initSeedFilterV2();
   initModal();
   injectDynamicStars();
+  const { inbred } = getSurveyVotesDetailed();
+  const seeds = SEEDS.filter(s => s.type === 'Inbred');
+  makePieChart('chart-inbred-survey', seeds.map(s => s.name.replace(/.*\(/, '').replace(')', '')), seeds.map(s => inbred[s.id] || 0), CHART_COLORS_OLIVE);
   document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.info-btn-v2')) return;
@@ -469,6 +474,9 @@ function initSurveyHybrid() {
   initSeedFilterV2();
   initModal();
   injectDynamicStars();
+  const { hybrid } = getSurveyVotesDetailed();
+  const seeds = SEEDS.filter(s => s.type === 'Hybrid');
+  makePieChart('chart-hybrid-survey', seeds.map(s => s.name.replace(/.*\(/, '').replace(')', '')), seeds.map(s => hybrid[s.id] || 0), CHART_COLORS_BLUE);
   document.querySelectorAll('.seed-row[data-seed-id]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.info-btn-v2')) return;
@@ -521,6 +529,14 @@ function initSurveySummary() {
     });
   }
   document.getElementById('confirm-btn')?.addEventListener('click', () => {
+    const orders = JSON.parse(localStorage.getItem(farmerKey('orders')) || '[]');
+    orders.push({
+      id:     'order_' + Date.now(),
+      season: generateSeasonLabel(),
+      status: 'decision_pending',
+      seeds:  []
+    });
+    localStorage.setItem(farmerKey('orders'), JSON.stringify(orders));
     localStorage.setItem(farmerKey('survey_submitted'), 'true');
     window.location.href = 'survey-confirm.html';
   });
@@ -553,6 +569,100 @@ function initSurveyView() {
       btn.addEventListener('click', e => { e.stopPropagation(); openModal(btn.dataset.seedId); });
     });
   }
+
+  // Status + allocated seed
+  const orders  = getAllOrders();
+  const active  = orders.slice().reverse().find(o => o.status !== 'delivered') || orders[orders.length - 1];
+  const statusEl = document.getElementById('survey-status-badge');
+  if (statusEl && active) {
+    statusEl.innerHTML = `<span class="${STATUS_CLASS[active.status] || ''}">${STATUS_LABELS[active.status] || active.status}</span>`;
+  }
+  const allocEl = document.getElementById('survey-allocated');
+  if (allocEl && active && active.seeds && active.seeds.length > 0) {
+    allocEl.innerHTML = active.seeds.map(({ id, sacks }) => {
+      const seed = getSeed(id); if (!seed) return '';
+      return `<div class="sum-row">
+        <div class="sum-row-left">
+          <span class="sum-row-name">${seed.name}</span>
+          <span class="badge badge-filled">${seed.type}</span>
+        </div>
+        <span class="sack-pill-dark">${sacks} sacks</span>
+      </div>`;
+    }).join('');
+    allocEl.style.display = '';
+  } else if (allocEl) {
+    allocEl.style.display = 'none';
+  }
+
+  // 4 aggregate pie charts
+  const { inbred: iv, hybrid: hv, pairs: pv } = getSurveyVotesDetailed();
+  const inbredSeeds = SEEDS.filter(s => s.type === 'Inbred');
+  const hybridSeeds = SEEDS.filter(s => s.type === 'Hybrid');
+
+  function shortName(seed) { return seed.name.replace(/.*\(/, '').replace(')', ''); }
+
+  makePieChart('chart-sv-inbred', inbredSeeds.map(shortName), inbredSeeds.map(s => iv[s.id] || 0), CHART_COLORS_OLIVE);
+  makePieChart('chart-sv-hybrid', hybridSeeds.map(shortName), hybridSeeds.map(s => hv[s.id] || 0), CHART_COLORS_BLUE);
+  makePieChart('chart-sv-all',    SEEDS.map(shortName),       SEEDS.map(s => (iv[s.id] || 0) + (hv[s.id] || 0)), CHART_COLORS_MIXED);
+
+  const pairEntries = Object.entries(pv).sort(([,a],[,b]) => b - a);
+  if (pairEntries.length > 0) {
+    const pairLabels = pairEntries.map(([key]) => {
+      const [i, h] = key.split('||');
+      const si = getSeed(i), sh = getSeed(h);
+      return `${si ? shortName(si) : i} + ${sh ? shortName(sh) : h}`;
+    });
+    makePieChart('chart-sv-pairs', pairLabels, pairEntries.map(([,v]) => v), CHART_COLORS_MIXED);
+  } else {
+    makePieChart('chart-sv-pairs', [], [], []);
+  }
+
+  const hiddenBar = document.getElementById('hidden-charts-bar');
+
+  function updateHiddenBar() {
+    if (!hiddenBar) return;
+    hiddenBar.style.display = hiddenBar.children.length > 0 ? '' : 'none';
+  }
+
+  function restoreChart(wrap, chip) {
+    wrap.style.display = '';
+    chip?.remove();
+    updateHiddenBar();
+  }
+
+  // Individual chart hide buttons
+  document.querySelectorAll('#survey-charts-section .da-chart-wrap').forEach(wrap => {
+    const titleText = wrap.querySelector('.da-chart-title')?.textContent || 'Chart';
+    const btn = document.createElement('button');
+    btn.className = 'chart-hide-btn';
+    btn.textContent = '−';
+    wrap.appendChild(btn);
+    btn.addEventListener('click', () => {
+      wrap.style.display = 'none';
+      if (hiddenBar) {
+        const chip = document.createElement('button');
+        chip.className = 'hidden-chart-chip';
+        chip.textContent = '+ ' + titleText;
+        chip.addEventListener('click', () => restoreChart(wrap, chip));
+        hiddenBar.appendChild(chip);
+        updateHiddenBar();
+      }
+    });
+  });
+
+  // Master hide/show all — restores individually hidden charts too
+  const section   = document.getElementById('survey-charts-section');
+  const toggleBtn = document.getElementById('toggle-charts-btn');
+  let visible = true;
+  toggleBtn?.addEventListener('click', () => {
+    visible = !visible;
+    section.style.display = visible ? '' : 'none';
+    toggleBtn.textContent = visible ? 'Hide Charts' : 'Show Charts';
+    if (visible) {
+      document.querySelectorAll('#survey-charts-section .da-chart-wrap').forEach(w => { w.style.display = ''; });
+      if (hiddenBar) { hiddenBar.innerHTML = ''; hiddenBar.style.display = 'none'; }
+    }
+  });
 }
 
 // ── SEED ORDER ─────────────────────────────────────────────────────────────
@@ -739,35 +849,32 @@ function initOrderDetail() {
 
   const list = document.getElementById('detail-list');
   if (list) {
-    list.innerHTML = order.seeds.map(({ id, sacks }) => {
-      const seed = getSeed(id);
-      if (!seed) return '';
-      return `
-        <div class="sum-row">
-          <div class="sum-row-left">
-            <span class="sum-row-name">${seed.name}</span>
-            <span class="badge badge-filled">${seed.type}</span>
-          </div>
-          <span class="sack-pill-dark">${sacks} sacks</span>
-        </div>`;
-    }).join('');
+    if (order.seeds && order.seeds.length > 0) {
+      list.innerHTML = order.seeds.map(({ id, sacks }) => {
+        const seed = getSeed(id);
+        if (!seed) return '';
+        return `
+          <div class="sum-row">
+            <div class="sum-row-left">
+              <span class="sum-row-name">${seed.name}</span>
+              <span class="badge badge-filled">${seed.type}</span>
+            </div>
+            <span class="sack-pill-dark">${sacks} sacks</span>
+          </div>`;
+      }).join('');
+    } else {
+      list.innerHTML = '<p style="text-align:center; color:#888; padding:1rem 0;">Awaiting DA allocation.</p>';
+    }
   }
 
   const statusEl = document.getElementById('detail-status');
-  if (statusEl) statusEl.innerHTML = `<span class="${STATUS_CLASS[order.status]}">${STATUS_LABELS[order.status]}</span>`;
+  if (statusEl) statusEl.innerHTML = `<span class="${STATUS_CLASS[order.status] || ''}">${STATUS_LABELS[order.status] || order.status}</span>`;
 
   const receiveBtn = document.getElementById('receive-btn');
   if (receiveBtn) {
-    receiveBtn.style.display = order.status === 'pickup' ? 'inline-block' : 'none';
+    receiveBtn.style.display = order.status === 'for_pickup' ? 'inline-block' : 'none';
     receiveBtn.addEventListener('click', () => {
-      // Update status for dynamic orders only
-      const dynamic = JSON.parse(localStorage.getItem(farmerKey('orders')) || '[]');
-      const idx = dynamic.findIndex(o => o.id === order.id);
-      if (idx !== -1) {
-        dynamic[idx].status = 'received';
-        localStorage.setItem(farmerKey('orders'), JSON.stringify(dynamic));
-      }
-      window.location.href = `satisfaction.html?id=${order.id}`;
+      window.location.href = `farmer-qr-scan.html?id=${order.id}`;
     });
   }
 }
@@ -864,6 +971,116 @@ function initFarmerRegister() {
     localStorage.setItem(farmerKey('reg_status'), 'pending');
     localStorage.removeItem(farmerKey('reg_rejection'));
     window.location.href = 'viewprofile.html';
+  });
+}
+
+// ── FARMER YIELD SURVEY ────────────────────────────────────────────────────
+const PLANTING_METHODS = ['Direct Seeding (Sabog Tanim)', 'Transplanting (Lipat Tanim)', 'Other'];
+const WATER_SOURCES    = ['Rain-fed', 'Irrigation', 'Other'];
+const WHY_NOT_PLANTED  = ['Received late', 'Bad weather', 'Pest infestation', 'Land preparation issues', 'Financial constraints', 'Other'];
+const WHAT_WAS_DONE    = ['Sell the seeds', 'Store for next season', 'Return to DA', 'Donate', 'Other'];
+
+function initFarmerYieldSurvey() {
+  updateNavGreeting();
+  let planted = true;
+
+  function buildOptions(arr) {
+    return arr.map(v => `<option value="${v}">${v}</option>`).join('');
+  }
+
+  function render() {
+    const yesFields = document.getElementById('yes-fields');
+    const noFields  = document.getElementById('no-fields');
+    document.getElementById('yn-yes').classList.toggle('active', planted);
+    document.getElementById('yn-no').classList.toggle('active', !planted);
+    if (yesFields) yesFields.style.display = planted ? '' : 'none';
+    if (noFields)  noFields.style.display  = planted ? 'none' : '';
+  }
+
+  document.getElementById('yn-yes')?.addEventListener('click', () => { planted = true;  render(); });
+  document.getElementById('yn-no')?.addEventListener('click',  () => { planted = false; render(); });
+
+  const methodSel = document.getElementById('planting-method');
+  const waterSel  = document.getElementById('water-source');
+  const whySel    = document.getElementById('why-not-planted');
+  const whatSel   = document.getElementById('what-was-done');
+  if (methodSel) methodSel.innerHTML = buildOptions(PLANTING_METHODS);
+  if (waterSel)  waterSel.innerHTML  = buildOptions(WATER_SOURCES);
+  if (whySel)    whySel.innerHTML    = buildOptions(WHY_NOT_PLANTED);
+  if (whatSel)   whatSel.innerHTML   = buildOptions(WHAT_WAS_DONE);
+
+  render();
+
+  const kabanInput = document.getElementById('kaban-count');
+  document.getElementById('kaban-minus')?.addEventListener('click', () => {
+    const v = parseInt(kabanInput?.value || '0');
+    if (kabanInput && v > 0) kabanInput.value = v - 1;
+  });
+  document.getElementById('kaban-plus')?.addEventListener('click', () => {
+    const v = parseInt(kabanInput?.value || '0');
+    if (kabanInput) kabanInput.value = v + 1;
+  });
+
+  document.getElementById('yield-next-btn')?.addEventListener('click', () => {
+    const kabans = parseInt(document.getElementById('kaban-count')?.value || '0');
+    const data = planted
+      ? { planted: true,  kabans, method: methodSel?.value, water: waterSel?.value }
+      : { planted: false, whyNot: whySel?.value, whatDone: whatSel?.value };
+    localStorage.setItem(farmerKey('yield_survey'), JSON.stringify(data));
+    window.location.href = 'farmer-survey-yield-summary.html';
+  });
+}
+
+// ── FARMER YIELD SURVEY SUMMARY ────────────────────────────────────────────
+function initFarmerYieldSummary() {
+  updateNavGreeting();
+  const data = JSON.parse(localStorage.getItem(farmerKey('yield_survey')) || '{}');
+  const list = document.getElementById('yield-summary-list');
+  if (list) {
+    const rows = data.planted
+      ? [
+          ['Did you plant the last allocated seeds?', 'Yes'],
+          ['How many kabans harvested?', `${data.kabans || 0} kabans`],
+          ['Planting method', data.method || '—'],
+          ['Water source', data.water || '—']
+        ]
+      : [
+          ['Did you plant the last allocated seeds?', 'No'],
+          ['Why were the seeds not planted?', data.whyNot || '—'],
+          ['What was done with the unplanted seeds?', data.whatDone || '—']
+        ];
+    list.innerHTML = rows.map(([q, a]) => `
+      <div class="yield-summary-row">
+        <div class="yield-summary-q">${q}</div>
+        <div class="yield-summary-a">${a}</div>
+      </div>`).join('');
+  }
+  document.getElementById('back-btn')?.addEventListener('click', () => { window.location.href = 'farmer-survey-yield.html'; });
+  document.getElementById('confirm-btn')?.addEventListener('click', () => {
+    localStorage.setItem(farmerKey('yield_submitted'), 'true');
+    window.location.href = 'seedselect-inbred.html';
+  });
+}
+
+// ── FARMER QR SCAN ─────────────────────────────────────────────────────────
+function initFarmerQRScan() {
+  updateNavGreeting();
+  const params  = new URLSearchParams(window.location.search);
+  const orderId = params.get('id');
+  document.getElementById('qr-next-btn')?.addEventListener('click', () => {
+    if (orderId) {
+      const dynamic = JSON.parse(localStorage.getItem(farmerKey('orders')) || '[]');
+      const idx = dynamic.findIndex(o => o.id === orderId);
+      if (idx !== -1) {
+        dynamic[idx].status = 'delivered';
+        localStorage.setItem(farmerKey('orders'), JSON.stringify(dynamic));
+      } else {
+        const overrides = JSON.parse(localStorage.getItem('ezseed_order_statuses') || '{}');
+        overrides[orderId] = 'delivered';
+        localStorage.setItem('ezseed_order_statuses', JSON.stringify(overrides));
+      }
+    }
+    window.location.href = `satisfaction.html?id=${orderId || ''}`;
   });
 }
 
@@ -1528,8 +1745,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'track-orders')   initTrackOrders();
   if (page === 'order-detail')   initOrderDetail();
   if (page === 'satisfaction')   { initSatisfaction(); }
-  if (page === 'farmer-profile')  initFarmerProfile();
-  if (page === 'farmer-register') initFarmerRegister();
+  if (page === 'farmer-profile')       initFarmerProfile();
+  if (page === 'farmer-register')      initFarmerRegister();
+  if (page === 'farmer-yield-survey')  initFarmerYieldSurvey();
+  if (page === 'farmer-yield-summary') initFarmerYieldSummary();
+  if (page === 'farmer-qr-scan')       initFarmerQRScan();
   // DA pages
   if (page === 'da-home')                initDAHome();
   if (page === 'da-survey')              initDASurvey();

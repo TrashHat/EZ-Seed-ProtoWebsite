@@ -1048,3 +1048,122 @@ body {
   font-family: inherit; transition: filter 0.15s;
 }
 .btn-danger:hover { filter: brightness(0.88); }
+
+/* ── BENTO GRID 3-CARD ROW ───────────────────────────── */
+.bento-grid-v2.single-col-3 {
+  grid-template-columns: 1fr 1fr;
+  max-width: 460px;
+}
+.bento-grid-v2.single-col-3 .bento-card-v2:last-child:nth-child(odd) {
+  grid-column: 1 / -1; max-width: 220px; margin: 0 auto;
+}
+
+/* ── SURVEY PIE CHART SECTION ────────────────────────── */
+.survey-chart-section {
+  background: var(--card-v2); border-radius: var(--radius);
+  padding: 1rem; margin-bottom: 1.25rem; text-align: center;
+}
+.survey-chart-title {
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--text-olive); margin-bottom: 0.5rem;
+}
+
+/* ── YIELD SURVEY FORM ───────────────────────────────── */
+.yield-form { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem; }
+.yield-question-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; background: var(--card-v2);
+  border-radius: var(--radius); padding: 0.75rem 1.1rem;
+  flex-wrap: wrap;
+}
+.yield-question-label { flex: 1; font-size: 0.9rem; font-weight: 600; color: var(--text-olive); min-width: 180px; }
+.yn-toggle { display: flex; gap: 0.4rem; flex-shrink: 0; }
+.yn-btn {
+  padding: 0.4rem 1.1rem; border-radius: var(--radius);
+  border: 2px solid var(--gray); background: #fff;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; color: var(--text-dark); transition: all 0.15s;
+}
+.yn-btn.active { background: var(--accent); border-color: var(--accent); color: var(--text-olive); }
+.yield-dropdown {
+  padding: 0.4rem 0.75rem; border: 1.5px solid #ccc;
+  border-radius: var(--radius); font-size: 0.88rem;
+  font-family: inherit; background: #fff; color: var(--text-dark);
+  min-width: 200px; flex-shrink: 0;
+}
+.yield-dropdown:focus { outline: none; border-color: var(--header-bg); }
+.kaban-counter { display: flex; align-items: center; background: var(--header-bg); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.kaban-counter .qty-display { width: 52px; }
+
+/* ── YIELD SUMMARY LIST ──────────────────────────────── */
+.yield-summary-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+.yield-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 1rem; background: var(--card-v2);
+  border-radius: var(--radius); padding: 0.75rem 1.1rem; flex-wrap: wrap;
+}
+.yield-summary-q { font-size: 0.88rem; font-weight: 600; color: var(--text-olive); flex: 1; }
+.yield-summary-a { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); text-align: right; }
+
+/* ── QR SCAN PLACEHOLDER ─────────────────────────────── */
+.qr-placeholder {
+  width: 300px; height: 260px; background: var(--gray);
+  border-radius: var(--radius); margin: 2rem auto 1.5rem;
+}
+
+/* ── DETAIL STATUS ROW ───────────────────────────────── */
+.detail-status-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  justify-content: center; margin-top: 1.25rem;
+}
+.detail-status-label { font-size: 1rem; color: var(--text-dark); }
+
+/* ── SURVEY RESULTS HEADER + TOGGLE ─────────────────── */
+.survey-results-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 2rem; margin-bottom: 0.5rem;
+}
+.survey-results-title {
+  font-size: 1.1rem; font-weight: 700; color: var(--text-olive);
+}
+.btn-toggle-charts {
+  padding: 0.3rem 0.9rem; border-radius: 999px;
+  border: 1.5px solid var(--text-olive); background: transparent;
+  color: var(--text-olive); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s;
+}
+.btn-toggle-charts:hover { background: var(--text-olive); color: #fff; }
+
+/* ── INDIVIDUAL CHART TOGGLE ─────────────────────────── */
+#survey-charts-section .da-charts-row {
+  display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start;
+}
+#survey-charts-section .da-chart-wrap {
+  flex: 1; min-width: 180px; position: relative;
+  background: #fff; border-radius: var(--radius);
+  padding: 0.75rem; box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+.chart-hide-btn {
+  position: absolute; top: 0.35rem; right: 0.35rem;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid #ccc; background: #fff;
+  font-size: 0.85rem; font-weight: 700; line-height: 1;
+  cursor: pointer; color: #999; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.chart-hide-btn:hover { border-color: var(--text-olive); color: var(--text-olive); }
+
+/* ── HIDDEN CHARTS RESTORE BAR ───────────────────────── */
+#hidden-charts-bar {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.hidden-chart-chip {
+  padding: 0.25rem 0.75rem; border-radius: 999px;
+  border: 1.5px solid var(--text-olive); background: transparent;
+  color: var(--text-olive); font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.hidden-chart-chip:hover { background: var(--text-olive); color: #fff; }

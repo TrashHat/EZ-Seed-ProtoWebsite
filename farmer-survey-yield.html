@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Yield Survey</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="farmer-yield-survey">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="dashboard.html" class="navbar-home">&#8592; Home</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, Farmer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Tell us about your rice yield last season.</h1>
+
+    <div class="yield-form">
+
+      <div class="yield-question-row">
+        <div class="yield-question-label">Did you plant the last allocated seeds?</div>
+        <div class="yn-toggle">
+          <button class="yn-btn active" id="yn-yes">Yes</button>
+          <button class="yn-btn" id="yn-no">No</button>
+        </div>
+      </div>
+
+      <div id="yes-fields">
+        <div class="yield-question-row">
+          <div class="yield-question-label">How many kabans (50kg) of rice were harvested last time?</div>
+          <div class="kaban-counter">
+            <button class="qty-btn" id="kaban-minus" data-dir="-1">&#8722;</button>
+            <input class="qty-display" id="kaban-count" type="number" value="0" min="0" style="width:60px; text-align:center; border:none;">
+            <button class="qty-btn" id="kaban-plus" data-dir="1">&#43;</button>
+          </div>
+        </div>
+
+        <div class="yield-question-row">
+          <div class="yield-question-label">What planting method was used?</div>
+          <select class="yield-dropdown" id="planting-method"></select>
+        </div>
+
+        <div class="yield-question-row">
+          <div class="yield-question-label">What type was the water supply?</div>
+          <select class="yield-dropdown" id="water-source"></select>
+        </div>
+      </div>
+
+      <div id="no-fields" style="display:none;">
+        <div class="yield-question-row">
+          <div class="yield-question-label">Why were the seeds not planted?</div>
+          <select class="yield-dropdown" id="why-not-planted"></select>
+        </div>
+
+        <div class="yield-question-row">
+          <div class="yield-question-label">What was done with the unplanted seeds?</div>
+          <select class="yield-dropdown" id="what-was-done"></select>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="next-area">
+      <button id="yield-next-btn" class="btn btn-primary">Next</button>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

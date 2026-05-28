@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EZ-Seed — Previous Surveys</title>
+  <title>EZ-Seed — Scan QR Code</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body data-page="track-orders">
+<body data-page="farmer-qr-scan">
 
   <nav class="navbar">
     <div class="navbar-left">
-      <a href="dashboard.html" class="navbar-home">&#8592; Home</a>
+      <a href="trackrequests.html" class="navbar-home">&#8592; Back</a>
     </div>
     <div class="navbar-right">
       <span class="navbar-greeting">Welcome, Farmer!</span>
@@ -18,10 +18,14 @@
     </div>
   </nav>
 
-  <div class="page">
-    <h1 class="page-title">Select the order you want to view</h1>
-    <p class="page-subtitle" style="text-align:center; margin-bottom:1rem; color:#888;">Your seed request history by season</p>
-    <div id="orders-list" class="request-list orders-list-v2"></div>
+  <div class="page" style="text-align:center;">
+    <h1 class="page-title">Please scan the QR Code on the sack</h1>
+
+    <div class="qr-placeholder"></div>
+
+    <div class="next-area">
+      <button id="qr-next-btn" class="btn btn-primary">Next</button>
+    </div>
   </div>
 
   <script src="js/main.js"></script>

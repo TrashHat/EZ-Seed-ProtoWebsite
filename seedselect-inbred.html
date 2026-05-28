@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EZ-Seed — Select Inbred Variety</title>
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body data-page="survey-inbred">
 
@@ -20,6 +21,11 @@
 
   <div class="page">
     <h1 class="page-title">Select your preferred inbred seed variety.</h1>
+
+    <div class="survey-chart-section">
+      <p class="survey-chart-title">Current Inbred Seed Demand</p>
+      <div class="da-chart-wrap"><canvas id="chart-inbred-survey"></canvas></div>
+    </div>
 
     <div class="filter-row-v2">
       <button class="chip-all filter-chip-v2 active" data-filter="all">All</button>
@@ -79,7 +85,7 @@
     </div>
 
     <div class="next-area">
-      <button id="add-btn" class="btn btn-primary" disabled>Add to Request</button>
+      <button id="add-btn" class="btn btn-primary" disabled>Confirm Preferences</button>
     </div>
   </div>
 
