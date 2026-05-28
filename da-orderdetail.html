@@ -41,6 +41,10 @@
       </div>
     </div>
 
+    <h2 class="da-section-title" style="margin-top:1.25rem;">Farmer's Seed Preference</h2>
+    <div id="farmer-pref-list" class="seed-list-v2"></div>
+
+    <h2 class="da-section-title" style="margin-top:1.25rem;">Allocated Seed</h2>
     <div id="detail-list" class="seed-list-v2"></div>
 
     <div class="detail-status-row">
@@ -48,8 +52,27 @@
       <span id="detail-status"></span>
     </div>
 
+    <!-- Decision form (shown when decision_pending) -->
+    <div id="decision-form" style="display:none; margin-top:1.5rem;">
+      <h2 class="da-section-title">Make Allocation Decision</h2>
+      <div class="da-order-info">
+        <div class="da-order-info-row">
+          <span class="da-order-info-label">Seed Type</span>
+          <select id="decision-seed" class="da-select" style="flex:1;"></select>
+        </div>
+        <div class="da-order-info-row">
+          <span class="da-order-info-label">Allotment (sacks)</span>
+          <input id="decision-allotment" type="number" min="1" value="20"
+            style="flex:1; padding:0.4rem 0.75rem; border:1.5px solid #ccc; border-radius:var(--radius); font-size:0.9rem; font-family:inherit;">
+        </div>
+      </div>
+      <div class="next-area" style="margin-top:1rem;">
+        <button id="decision-confirm-btn" class="btn btn-primary">Confirm Decision</button>
+      </div>
+    </div>
+
     <div class="btn-row-v2" style="margin-top:1.5rem;">
-      <button id="da-update-status-btn" class="btn btn-primary"></button>
+      <button id="da-update-status-btn" class="btn btn-primary" style="display:none;"></button>
       <a href="da-trackrequests.html" class="btn btn-secondary">Back to Orders</a>
     </div>
   </div>

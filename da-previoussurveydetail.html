@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EZ-Seed — Seed Survey Results</title>
+  <title>EZ-Seed — Previous Survey Detail</title>
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
-<body data-page="da-survey">
+<body data-page="da-previoussurveydetail">
 
   <nav class="navbar">
     <div class="navbar-left">
-      <a href="da-index.html" class="navbar-home">&#8592; Dashboard</a>
+      <a href="da-previoussurveys.html" class="navbar-home">&#8592; Previous Surveys</a>
     </div>
     <div class="navbar-right">
       <span class="navbar-greeting">Welcome, DAOfficer!</span>
@@ -20,7 +20,7 @@
   </nav>
 
   <div class="page">
-    <h1 class="page-title">Seed Survey Results</h1>
+    <h1 class="page-title" id="detail-season-title">Seed Survey Results</h1>
 
     <!-- Section 1: Preference Survey Charts -->
     <div class="da-filter-bar">
@@ -91,7 +91,7 @@
     </div>
 
     <!-- Section 4: Previous Season Post-Survey -->
-    <h2 class="da-section-title">Previous Season Post-Survey</h2>
+    <h2 class="da-section-title">Post-Survey Results</h2>
     <div class="da-filter-bar">
       <select class="da-filter-select" disabled><option>All Provinces</option></select>
       <select class="da-filter-select" disabled><option>All Municipalities</option></select>
@@ -120,22 +120,9 @@
       </div>
     </div>
 
-    <!-- Section 5: Seed Allocation -->
-    <h2 class="da-section-title">Seed Varieties Available for Allocation</h2>
-    <div id="da-allocation-summary" style="display:none;">
-      <div id="da-allocation-summary-list" class="seed-list-v2" style="margin-bottom:1rem;"></div>
-      <button id="da-change-allocation-btn" class="btn btn-secondary">Change Allocation</button>
-    </div>
-    <div id="da-allocation-form">
-      <div id="da-allocation-checkboxes" class="da-allocation-grid"></div>
-      <div class="next-area" style="margin-top:1rem;">
-        <button id="da-set-allocation-btn" class="btn btn-primary">Set Seed Types to Be Allocated</button>
-      </div>
-    </div>
-
-    <!-- Section 6: Board Recommendations -->
-    <h2 class="da-section-title">Board Recommended Seed Combinations</h2>
-    <div id="board-recs" class="da-survey-list"></div>
+    <!-- Section 5: Allocated Seed Varieties -->
+    <h2 class="da-section-title">Allocated Seed Varieties</h2>
+    <div id="prev-allocated-list" class="seed-list-v2"></div>
 
   </div>
 
