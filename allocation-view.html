@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ-Seed — Your Allocated Seed</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="allocation-view">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="dashboard.html" class="navbar-home">&#8592; Home</a>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-greeting">Welcome, Farmer!</span>
+      <div class="navbar-avatar"></div>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1 class="page-title">Your Allocated Seed</h1>
+
+    <div class="da-order-info" style="margin-bottom:1.25rem;">
+      <div class="da-order-info-row">
+        <span class="da-order-info-label">Season</span>
+        <span class="da-order-info-value" id="alloc-season"></span>
+      </div>
+      <div class="da-order-info-row">
+        <span class="da-order-info-label">Allotment</span>
+        <span class="da-order-info-value" id="alloc-sacks"></span>
+      </div>
+    </div>
+
+    <div id="alloc-seed-list" class="seed-list-v2"></div>
+
+    <div class="detail-status-row" style="margin-top:1.25rem;">
+      <span class="detail-status-label">Status of Request:</span>
+      <span id="alloc-status"></span>
+    </div>
+
+    <!-- Farmer feedback / change request -->
+    <div id="feedback-area" style="margin-top:1.75rem;">
+      <div id="feedback-sent" class="feedback-sent-notice" style="display:none;">
+        &#10003; Your change request has been sent to the DA.
+      </div>
+      <div id="feedback-form-wrap">
+        <h2 class="da-section-title">Request Allocation Change</h2>
+        <div class="da-order-info">
+          <div class="da-order-info-row">
+            <span class="da-order-info-label">Reason</span>
+            <select id="feedback-reason" class="da-select" style="flex:1;">
+              <option value="wrong_variety">Wrong seed variety</option>
+              <option value="not_suitable">Not suitable for my land</option>
+              <option value="prefer_pick">Prefer my survey pick</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <textarea id="feedback-message" placeholder="Additional explanation (optional)"
+          style="width:100%; margin-top:0.75rem; padding:0.6rem 0.75rem; border:1.5px solid #ccc; border-radius:var(--radius); font-size:0.9rem; font-family:inherit; resize:vertical; min-height:5rem; box-sizing:border-box;"></textarea>
+        <div class="next-area" style="margin-top:0.75rem;">
+          <button id="feedback-submit-btn" class="btn btn-primary">Send Request</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="next-area" style="margin-top:1.5rem;">
+      <a href="dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Seed Info Modal -->
+  <div class="modal-overlay" id="seed-modal">
+    <div class="modal-panel">
+      <button class="modal-close" id="modal-close">&#x2715;</button>
+      <img class="modal-img" id="modal-img" src="" alt="">
+      <div class="modal-body">
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-desc"  id="modal-desc"></p>
+        <div class="modal-badges" id="modal-badges"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

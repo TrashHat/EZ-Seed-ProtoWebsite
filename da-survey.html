@@ -133,7 +133,52 @@
       </div>
     </div>
 
-    <!-- Section 6: Board Recommendations -->
+    <!-- Section 6: Sack Allocation per Variety -->
+    <h2 class="da-section-title">Sack Allocation per Variety</h2>
+    <div id="da-sack-alloc-area">
+      <p id="da-sack-no-seeds" style="display:none; color:#888; text-align:center; padding:0.5rem 0;">
+        Set available seed varieties above before allocating sacks.
+      </p>
+      <div id="da-sack-done" style="display:none;">
+        <div id="da-sack-done-list" class="seed-list-v2" style="margin-bottom:0.5rem;"></div>
+        <p id="da-sack-done-total" class="sack-alloc-total"></p>
+        <button id="da-change-sacks-btn" class="btn btn-secondary">Change Sack Allocation</button>
+      </div>
+      <div id="da-sack-form" style="display:none;">
+        <div class="da-order-info" style="margin-bottom:0.75rem;">
+          <div class="da-order-info-row">
+            <span class="da-order-info-label">Total Sack Budget</span>
+            <input id="sack-budget-input" type="number" min="1" value="200"
+              style="flex:1; padding:0.4rem 0.75rem; border:1.5px solid #ccc; border-radius:var(--radius); font-size:0.9rem; font-family:inherit;">
+          </div>
+        </div>
+        <div id="sack-alloc-inputs" class="seed-list-v2" style="margin-bottom:0.5rem;"></div>
+        <p id="sack-alloc-total" class="sack-alloc-total"></p>
+        <p id="sack-over-warning" class="sack-over-warning" style="display:none;">Over budget — reduce allocation</p>
+        <div class="next-area" style="margin-top:0.75rem;">
+          <button id="sack-confirm-btn" class="btn btn-primary">Confirm Sack Allocation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Bulk Farmer Allocation -->
+    <h2 class="da-section-title">Bulk Farmer Allocation</h2>
+    <div id="da-bulk-alloc-area">
+      <p id="da-bulk-no-seeds" style="display:none; color:#888; text-align:center; padding:0.5rem 0;">
+        Set sack allocation above before allocating to farmers.
+      </p>
+      <div id="da-bulk-done" style="display:none;">
+        <div id="da-bulk-done-list" class="seed-list-v2" style="margin-bottom:0.75rem;"></div>
+      </div>
+      <div id="da-bulk-form" style="display:none;">
+        <div id="bulk-preview" class="seed-list-v2" style="margin-bottom:1rem;"></div>
+        <div class="next-area">
+          <button id="bulk-alloc-btn" class="btn btn-primary">Confirm Allocation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Board Recommendations -->
     <h2 class="da-section-title">Board Recommended Seed Combinations</h2>
     <div id="board-recs" class="da-survey-list"></div>
 

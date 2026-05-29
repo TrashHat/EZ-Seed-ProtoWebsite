@@ -52,7 +52,22 @@
       <span id="detail-status"></span>
     </div>
 
-    <!-- Decision form (shown when decision_pending) -->
+    <!-- Farmer change request callout -->
+    <div id="farmer-feedback-callout" class="feedback-callout" style="display:none;">
+      <div class="feedback-callout-title">&#9888; Change Request from Farmer</div>
+      <div class="da-order-info" style="margin-top:0.35rem;">
+        <div class="da-order-info-row">
+          <span class="da-order-info-label">Reason</span>
+          <span id="feedback-reason-text" class="da-order-info-value"></span>
+        </div>
+        <div class="da-order-info-row">
+          <span class="da-order-info-label">Message</span>
+          <span id="feedback-message-text" class="da-order-info-value"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision / Change Allocation form -->
     <div id="decision-form" style="display:none; margin-top:1.5rem;">
       <h2 class="da-section-title">Make Allocation Decision</h2>
       <div class="da-order-info">

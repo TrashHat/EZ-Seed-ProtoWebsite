@@ -71,17 +71,21 @@ const FARMER_PROFILES = {
   }
 };
 
-// ── DEFAULT ORDERS (hardcoded, shown only for FarmerA) ────────────────────
+// ── DEFAULT ORDERS (historical only — no active allocation hardcoded) ──────
 const DEFAULT_ORDERS = [
   {
     id: 'ds2026', season: '2026 Dry Season', status: 'delivered',
     seeds: [{ id: 'rc216', sacks: 20 }]
-  },
-  {
-    id: 'ws2026', season: '2026 Wet Season', status: 'arrived_pao',
-    seeds: [{ id: 'rc216', sacks: 20 }]
   }
 ];
+
+// ── FEEDBACK REASON LABELS ─────────────────────────────────────────────────
+const FEEDBACK_REASONS = {
+  wrong_variety: 'Wrong seed variety',
+  not_suitable:  'Not suitable for my land',
+  prefer_pick:   'Prefer my survey pick',
+  other:         'Other'
+};
 
 const STATUS_LABELS = {
   decision_pending: 'Decision Pending',
@@ -256,6 +260,63 @@ const STATUS_NEXT = {
 
 function getOrderById(id) {
   return getAllOrders().find(o => o.id === id);
+}
+
+function getActiveAllocation() {
+  return getAllOrders().slice().reverse().find(
+    o => o.status !== 'delivered' && o.seeds && o.seeds.length > 0
+  ) || null;
+}
+
+function buildSackAllocation(budgetSacks, availableSeeds) {
+  const { inbred: iv, hybrid: hv } = getSurveyVotesDetailed();
+  const votes = availableSeeds.map(id => ({ id, v: (iv[id]||0) + (hv[id]||0) }));
+  const totalVotes = votes.reduce((s, x) => s + x.v, 0);
+  let allocs = votes.map(({ id, v }) => {
+    const exact = totalVotes > 0 ? (v / totalVotes) * budgetSacks : budgetSacks / availableSeeds.length;
+    return { id, sacks: Math.floor(exact), remainder: exact - Math.floor(exact) };
+  });
+  let leftover = budgetSacks - allocs.reduce((s, x) => s + x.sacks, 0);
+  allocs.sort((a, b) => b.remainder - a.remainder);
+  for (let i = 0; i < leftover; i++) allocs[i].sacks++;
+  return Object.fromEntries(allocs.map(({ id, sacks }) => [id, sacks]));
+}
+
+function buildBulkPreview() {
+  const available = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
+  const seedSacks = JSON.parse(localStorage.getItem('ezseed_da_seed_sacks') || 'null');
+  if (!available || available.length === 0) return null;
+  const totalSacks = seedSacks
+    ? Object.values(seedSacks).reduce((s, n) => s + n, 0)
+    : available.length * ALLOTTED_SACKS;
+  const pending = [];
+  KNOWN_FARMERS.forEach(farmer => {
+    const orders = applyStatusOverrides(JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]'));
+    const order = orders.find(o => o.status === 'decision_pending' && (!o.seeds || !o.seeds.length));
+    if (order) pending.push({ farmer, orderId: order.id });
+  });
+  if (pending.length === 0) return [];
+  const maxFarmers = Math.floor(totalSacks / ALLOTTED_SACKS);
+  const slotted = pending.slice(0, maxFarmers);
+  const { inbred: iv, hybrid: hv } = getSurveyVotesDetailed();
+  const mostPopular = [...available].sort((a, b) => ((iv[b]||0)+(hv[b]||0)) - ((iv[a]||0)+(hv[a]||0)))[0];
+  return slotted.map(({ farmer, orderId }) => {
+    const inbredPick = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]')[0];
+    const hybridPick = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]')[0];
+    const matchedPick = [inbredPick, hybridPick].find(id => id && available.includes(id));
+    return { farmer, orderId, seedId: matchedPick || mostPopular, sacks: ALLOTTED_SACKS, isMatch: !!matchedPick };
+  });
+}
+
+function executeBulkAllocation(preview) {
+  preview.forEach(({ farmer, orderId, seedId, sacks }) => {
+    const orders = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return;
+    orders[idx].seeds  = [{ id: seedId, sacks }];
+    orders[idx].status = 'decision_made';
+    localStorage.setItem(`ezseed_${farmer}_orders`, JSON.stringify(orders));
+  });
 }
 
 function generateSeasonLabel() {
@@ -443,6 +504,13 @@ function initFarmerHome() {
   if (surveyCard && localStorage.getItem(farmerKey('survey_submitted')) === 'true') {
     surveyCard.href = 'survey-view.html';
   }
+
+  const allocCard = document.querySelector('.bento-card-v2[data-card="allocation"]');
+  const grid = document.getElementById('farmer-bento-grid');
+  if (allocCard && getActiveAllocation()) {
+    allocCard.style.display = '';
+    grid?.classList.remove('single-col-3');
+  }
 }
 
 // ── V2 FILTER LOGIC ────────────────────────────────────────────────────────
@@ -622,28 +690,18 @@ function initSurveyView() {
     });
   }
 
-  // Status + allocated seed
+  // Status
   const orders  = getAllOrders();
   const active  = orders.slice().reverse().find(o => o.status !== 'delivered') || orders[orders.length - 1];
   const statusEl = document.getElementById('survey-status-badge');
   if (statusEl && active) {
     statusEl.innerHTML = `<span class="${STATUS_CLASS[active.status] || ''}">${STATUS_LABELS[active.status] || active.status}</span>`;
   }
-  const allocEl = document.getElementById('survey-allocated');
-  if (allocEl && active && active.seeds && active.seeds.length > 0) {
-    allocEl.innerHTML = active.seeds.map(({ id, sacks }) => {
-      const seed = getSeed(id); if (!seed) return '';
-      return `<div class="sum-row">
-        <div class="sum-row-left">
-          <span class="sum-row-name">${seed.name}</span>
-          <span class="badge badge-filled">${seed.type}</span>
-        </div>
-        <span class="sack-pill-dark">${sacks} sacks</span>
-      </div>`;
-    }).join('');
-    allocEl.style.display = '';
-  } else if (allocEl) {
-    allocEl.style.display = 'none';
+
+  // Show "View Allocated Seed" link if allocation exists
+  const linkArea = document.getElementById('survey-alloc-link-area');
+  if (linkArea && getActiveAllocation()) {
+    linkArea.style.display = '';
   }
 
   // 4 aggregate pie charts
@@ -902,14 +960,20 @@ function initOrderDetail() {
   const list = document.getElementById('detail-list');
   if (list) {
     if (order.seeds && order.seeds.length > 0) {
+      const picks = new Set([
+        ...JSON.parse(localStorage.getItem(farmerKey('survey_inbred')) || '[]'),
+        ...JSON.parse(localStorage.getItem(farmerKey('survey_hybrid')) || '[]')
+      ]);
       list.innerHTML = order.seeds.map(({ id, sacks }) => {
         const seed = getSeed(id);
         if (!seed) return '';
+        const yourPick = picks.has(id) ? '<span class="badge badge-your-pick">&#10003; Your Pick</span>' : '';
         return `
           <div class="sum-row">
             <div class="sum-row-left">
               <span class="sum-row-name">${seed.name}</span>
               <span class="badge badge-filled">${seed.type}</span>
+              ${yourPick}
             </div>
             <span class="sack-pill-dark">${sacks} sacks</span>
           </div>`;
@@ -929,6 +993,68 @@ function initOrderDetail() {
       window.location.href = `farmer-qr-scan.html?id=${order.id}`;
     });
   }
+}
+
+// ── ALLOCATION VIEW ────────────────────────────────────────────────────────
+function initAllocationView() {
+  updateNavGreeting();
+  initModal();
+  const order = getActiveAllocation();
+  if (!order) { window.location.href = 'dashboard.html'; return; }
+
+  const picks = new Set([
+    ...JSON.parse(localStorage.getItem(farmerKey('survey_inbred')) || '[]'),
+    ...JSON.parse(localStorage.getItem(farmerKey('survey_hybrid')) || '[]')
+  ]);
+
+  const seasonEl = document.getElementById('alloc-season');
+  if (seasonEl) seasonEl.textContent = order.season;
+
+  const totalSacks = order.seeds.reduce((sum, s) => sum + s.sacks, 0);
+  const sacksEl = document.getElementById('alloc-sacks');
+  if (sacksEl) sacksEl.textContent = `${totalSacks} sacks`;
+
+  const seedList = document.getElementById('alloc-seed-list');
+  if (seedList) {
+    seedList.innerHTML = order.seeds.map(({ id, sacks }) => {
+      const seed = getSeed(id);
+      if (!seed) return '';
+      const yourPick = picks.has(id) ? '<span class="badge badge-your-pick">&#10003; Your Pick</span>' : '';
+      return `
+        <div class="sum-row">
+          <div class="sum-row-left">
+            <span class="sum-row-name">${seed.name}</span>
+            <span class="badge badge-filled">${seed.type}</span>
+            ${buildStars(seed)}
+            ${yourPick}
+            <button class="info-btn-v2" data-seed-id="${id}">i</button>
+          </div>
+          <span class="sack-pill-dark">${sacks} sacks</span>
+        </div>`;
+    }).join('');
+    seedList.querySelectorAll('.info-btn-v2[data-seed-id]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); openModal(btn.dataset.seedId); });
+    });
+  }
+
+  const statusEl = document.getElementById('alloc-status');
+  if (statusEl) statusEl.innerHTML = `<span class="${STATUS_CLASS[order.status] || ''}">${STATUS_LABELS[order.status] || order.status}</span>`;
+
+  // Feedback form
+  const existingFeedback = localStorage.getItem(farmerKey('alloc_feedback'));
+  const feedbackSentEl   = document.getElementById('feedback-sent');
+  const feedbackFormWrap = document.getElementById('feedback-form-wrap');
+  if (existingFeedback) {
+    if (feedbackSentEl)   feedbackSentEl.style.display   = '';
+    if (feedbackFormWrap) feedbackFormWrap.style.display = 'none';
+  }
+  document.getElementById('feedback-submit-btn')?.addEventListener('click', () => {
+    const reason  = document.getElementById('feedback-reason')?.value;
+    const message = document.getElementById('feedback-message')?.value.trim() || '';
+    localStorage.setItem(farmerKey('alloc_feedback'), JSON.stringify({ reason, message }));
+    if (feedbackSentEl)   feedbackSentEl.style.display   = '';
+    if (feedbackFormWrap) feedbackFormWrap.style.display = 'none';
+  });
 }
 
 // ── SATISFACTION ───────────────────────────────────────────────────────────
@@ -1324,20 +1450,22 @@ function initDASurvey() {
   const dEnt = Object.entries(yd.whatDone);
   makePieChart('chart-whatdone', dEnt.map(([k])=>k), dEnt.map(([,v])=>v), CHART_COLORS_MIXED);
 
-  // Seed allocation section
-  const saved = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
-  const formEl    = document.getElementById('da-allocation-form');
-  const summaryEl = document.getElementById('da-allocation-summary');
+  // Section 5: Seed varieties available for allocation
+  const availSeeds = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
+  const formEl     = document.getElementById('da-allocation-form');
+  const summaryEl  = document.getElementById('da-allocation-summary');
 
-  if (saved && saved.length > 0) {
+  if (availSeeds && availSeeds.length > 0) {
     if (formEl) formEl.style.display = 'none';
     if (summaryEl) {
       summaryEl.style.display = '';
       const list = document.getElementById('da-allocation-summary-list');
-      if (list) list.innerHTML = saved.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span></div></div>`; }).join('');
+      if (list) list.innerHTML = availSeeds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span></div></div>`; }).join('');
     }
     document.getElementById('da-change-allocation-btn')?.addEventListener('click', () => {
-      localStorage.removeItem('ezseed_da_available_seeds'); window.location.reload();
+      localStorage.removeItem('ezseed_da_available_seeds');
+      localStorage.removeItem('ezseed_da_seed_sacks');
+      window.location.reload();
     });
   } else {
     const checkboxes = document.getElementById('da-allocation-checkboxes');
@@ -1365,6 +1493,154 @@ function initDASurvey() {
     recEl.innerHTML = allRecIds.length === 0
       ? '<p style="color:#888;">No board recommendations set yet.</p>'
       : allRecIds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="da-survey-row"><div class="da-survey-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
+  }
+
+  // Section 6: Sack allocation per variety
+  const savedSacks    = JSON.parse(localStorage.getItem('ezseed_da_seed_sacks') || 'null');
+  const sackNoSeedsEl = document.getElementById('da-sack-no-seeds');
+  const sackDoneEl    = document.getElementById('da-sack-done');
+  const sackFormEl    = document.getElementById('da-sack-form');
+
+  if (!availSeeds || availSeeds.length === 0) {
+    if (sackNoSeedsEl) sackNoSeedsEl.style.display = '';
+    if (sackDoneEl) sackDoneEl.style.display = 'none';
+    if (sackFormEl) sackFormEl.style.display = 'none';
+  } else if (savedSacks) {
+    if (sackNoSeedsEl) sackNoSeedsEl.style.display = 'none';
+    if (sackDoneEl) sackDoneEl.style.display = '';
+    if (sackFormEl) sackFormEl.style.display = 'none';
+    const doneList  = document.getElementById('da-sack-done-list');
+    const doneTotal = document.getElementById('da-sack-done-total');
+    const total = Object.values(savedSacks).reduce((s, n) => s + n, 0);
+    if (doneList) {
+      doneList.innerHTML = availSeeds.map(id => {
+        const seed = getSeed(id); if (!seed) return '';
+        const sacks = savedSacks[id] || 0;
+        return `<div class="bulk-preview-row">
+          <div class="bulk-preview-left">
+            <span class="bulk-preview-farmer">${seed.name}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="badge badge-filled">${seed.type}</span>
+            <span class="sack-pill-dark">${sacks} sacks</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    if (doneTotal) doneTotal.textContent = `Total: ${total} sacks`;
+    document.getElementById('da-change-sacks-btn')?.addEventListener('click', () => {
+      localStorage.removeItem('ezseed_da_seed_sacks');
+      window.location.reload();
+    });
+  } else {
+    if (sackNoSeedsEl) sackNoSeedsEl.style.display = 'none';
+    if (sackDoneEl) sackDoneEl.style.display = 'none';
+    if (sackFormEl) sackFormEl.style.display = '';
+    const sackBudgetInput = document.getElementById('sack-budget-input');
+    const sackInputsEl    = document.getElementById('sack-alloc-inputs');
+    const sackTotalEl     = document.getElementById('sack-alloc-total');
+    const sackWarningEl   = document.getElementById('sack-over-warning');
+
+    function renderSackInputs() {
+      const budget   = parseInt(sackBudgetInput?.value || '200');
+      const autoAlloc = buildSackAllocation(budget, availSeeds);
+      if (!sackInputsEl) return;
+      sackInputsEl.innerHTML = availSeeds.map(id => {
+        const seed = getSeed(id); if (!seed) return '';
+        return `<div class="bulk-preview-row" style="align-items:center;">
+          <div class="bulk-preview-left">
+            <span class="bulk-preview-farmer">${seed.name}</span>
+            <span class="badge badge-filled" style="align-self:flex-start;">${seed.type}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <input type="number" min="0" value="${autoAlloc[id] || 0}" data-seed="${id}" class="sack-qty-input">
+            <span style="font-size:0.85rem; color:#555;">sacks</span>
+          </div>
+        </div>`;
+      }).join('');
+      document.querySelectorAll('.sack-qty-input').forEach(inp => inp.addEventListener('input', updateSackTotal));
+      updateSackTotal();
+    }
+
+    function updateSackTotal() {
+      const budget = parseInt(sackBudgetInput?.value || '200');
+      const total  = [...document.querySelectorAll('.sack-qty-input')].reduce((s, inp) => s + (parseInt(inp.value) || 0), 0);
+      if (sackTotalEl) {
+        const color = total === budget ? '#16a34a' : total > budget ? '#dc2626' : 'var(--text-olive)';
+        sackTotalEl.style.color = color;
+        sackTotalEl.textContent = `Total: ${total} / ${budget} sacks`;
+      }
+      if (sackWarningEl) sackWarningEl.style.display = total > budget ? '' : 'none';
+    }
+
+    sackBudgetInput?.addEventListener('input', renderSackInputs);
+    renderSackInputs();
+
+    document.getElementById('sack-confirm-btn')?.addEventListener('click', () => {
+      const allocs = {};
+      document.querySelectorAll('.sack-qty-input').forEach(inp => {
+        allocs[inp.dataset.seed] = parseInt(inp.value) || 0;
+      });
+      localStorage.setItem('ezseed_da_seed_sacks', JSON.stringify(allocs));
+      window.location.reload();
+    });
+  }
+
+  // Section 7: Bulk farmer allocation
+  const noSeedsEl  = document.getElementById('da-bulk-no-seeds');
+  const bulkFormEl = document.getElementById('da-bulk-form');
+  const bulkDoneEl = document.getElementById('da-bulk-done');
+  const previewEl  = document.getElementById('bulk-preview');
+
+  if (!savedSacks) {
+    if (noSeedsEl) noSeedsEl.style.display = '';
+    if (bulkFormEl) bulkFormEl.style.display = 'none';
+    if (bulkDoneEl) bulkDoneEl.style.display = 'none';
+  } else {
+    if (noSeedsEl) noSeedsEl.style.display = 'none';
+    const preview = buildBulkPreview();
+
+    function renderBulkPreviewHTML(rows) {
+      return rows.map(({ farmer, seedId, sacks, isMatch }) => {
+        const profile = getProfile(farmer);
+        const seed    = getSeed(seedId);
+        if (!seed) return '';
+        const pickBadge = isMatch ? '<span class="badge badge-your-pick">&#10003; Their Pick</span>' : '';
+        return `<div class="bulk-preview-row">
+          <div class="bulk-preview-left">
+            <span class="bulk-preview-farmer">${profile.name || farmer}</span>
+            <span class="bulk-preview-seed">${seed.name}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <span class="badge badge-filled">${seed.type}</span>
+            ${pickBadge}
+            <span class="sack-pill-dark">${sacks} sacks</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    if (!preview || preview.length === 0) {
+      if (bulkFormEl) bulkFormEl.style.display = 'none';
+      if (bulkDoneEl) bulkDoneEl.style.display = '';
+      const doneList = document.getElementById('da-bulk-done-list');
+      if (doneList) doneList.innerHTML = '<p style="color:#888; text-align:center; padding:0.5rem 0;">All pending farmers have been allocated.</p>';
+    } else {
+      if (bulkFormEl) bulkFormEl.style.display = '';
+      if (bulkDoneEl) bulkDoneEl.style.display = 'none';
+      if (previewEl) previewEl.innerHTML = renderBulkPreviewHTML(preview);
+      document.getElementById('bulk-alloc-btn')?.addEventListener('click', () => {
+        const current = buildBulkPreview();
+        if (!current || current.length === 0) return;
+        executeBulkAllocation(current);
+        if (bulkFormEl) bulkFormEl.style.display = 'none';
+        if (bulkDoneEl) {
+          bulkDoneEl.style.display = '';
+          const doneList = document.getElementById('da-bulk-done-list');
+          if (doneList) doneList.innerHTML = renderBulkPreviewHTML(current);
+        }
+      });
+    }
   }
 }
 
@@ -1477,12 +1753,16 @@ function initDATrackRequests() {
       list.innerHTML = '<p style="text-align:center; color:#888; margin-top:1rem;">No orders match the filter.</p>';
       return;
     }
-    list.innerHTML = filtered.map(o => `
+    list.innerHTML = filtered.map(o => {
+      const hasFeedback = !!localStorage.getItem(`ezseed_${o.farmer}_alloc_feedback`);
+      const badge = hasFeedback ? '<span class="feedback-badge" title="Change request pending">!</span>' : '';
+      return `
       <div class="request-row">
-        <span class="request-season">${o.farmer} — ${o.season}</span>
+        <span class="request-season">${o.farmer} — ${o.season}${badge}</span>
         <span class="${STATUS_CLASS[o.status]}">${STATUS_LABELS[o.status]}</span>
         <a href="da-orderdetail.html?farmer=${o.farmer}&id=${o.id}" class="btn-details">See Details</a>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   populateSeasonFilter();
@@ -1544,49 +1824,76 @@ function initDAOrderDetail() {
   const statusEl = document.getElementById('detail-status');
   if (statusEl) statusEl.innerHTML = `<span class="${STATUS_CLASS[order.status] || ''}">${STATUS_LABELS[order.status] || order.status}</span>`;
 
-  if (order.status === 'decision_pending') {
-    // Show decision form
-    const decisionForm = document.getElementById('decision-form');
-    if (decisionForm) decisionForm.style.display = '';
+  // Farmer feedback callout
+  const feedback = JSON.parse(localStorage.getItem(`ezseed_${farmer}_alloc_feedback`) || 'null');
+  const feedbackCallout = document.getElementById('farmer-feedback-callout');
+  if (feedbackCallout && feedback) {
+    feedbackCallout.style.display = '';
+    const reasonEl = document.getElementById('feedback-reason-text');
+    const msgEl    = document.getElementById('feedback-message-text');
+    if (reasonEl) reasonEl.textContent = FEEDBACK_REASONS[feedback.reason] || feedback.reason;
+    if (msgEl)    msgEl.textContent    = feedback.message || '—';
+  }
+
+  // Allocation form: initial (pending + no seeds) OR change (has seeds + not delivered)
+  const isInitial  = order.status === 'decision_pending' && (!order.seeds || !order.seeds.length);
+  const isChange   = order.seeds && order.seeds.length > 0 && order.status !== 'delivered';
+  const decisionForm = document.getElementById('decision-form');
+  if ((isInitial || isChange) && decisionForm) {
+    decisionForm.style.display = '';
+    const titleEl = decisionForm.querySelector('.da-section-title');
+    if (titleEl) titleEl.textContent = isChange ? 'Change Allocation' : 'Make Allocation Decision';
 
     const seedSelect = document.getElementById('decision-seed');
     if (seedSelect) {
       const available = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null') || SEEDS.map(s => s.id);
-      seedSelect.innerHTML = available.map(id => { const seed = getSeed(id); return seed ? `<option value="${id}">${seed.name} (${seed.type})</option>` : ''; }).join('');
+      seedSelect.innerHTML = available.map(id => {
+        const seed = getSeed(id);
+        const sel  = order.seeds?.[0]?.id === id ? 'selected' : '';
+        return seed ? `<option value="${id}" ${sel}>${seed.name} (${seed.type})</option>` : '';
+      }).join('');
     }
 
-    document.getElementById('decision-confirm-btn')?.addEventListener('click', () => {
-      const seedId   = seedSelect?.value;
-      const allotment = parseInt(document.getElementById('decision-allotment')?.value || '20');
+    const allotmentInput = document.getElementById('decision-allotment');
+    if (allotmentInput && order.seeds?.[0]) allotmentInput.value = order.seeds[0].sacks;
+
+    const confirmBtn = document.getElementById('decision-confirm-btn');
+    if (confirmBtn) confirmBtn.textContent = isChange ? 'Update Allocation' : 'Confirm Decision';
+
+    confirmBtn?.addEventListener('click', () => {
+      const seedId    = seedSelect?.value;
+      const allotment = parseInt(allotmentInput?.value || '20');
       if (!seedId) return;
       const dynamic = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
       const idx = dynamic.findIndex(o => o.id === orderId);
       if (idx !== -1) {
         dynamic[idx].seeds  = [{ id: seedId, sacks: allotment }];
-        dynamic[idx].status = 'decision_made';
+        if (dynamic[idx].status === 'decision_pending') dynamic[idx].status = 'decision_made';
         localStorage.setItem(`ezseed_${farmer}_orders`, JSON.stringify(dynamic));
       } else {
         const overrides = JSON.parse(localStorage.getItem('ezseed_order_statuses') || '{}');
         overrides[orderId] = 'decision_made';
         localStorage.setItem('ezseed_order_statuses', JSON.stringify(overrides));
       }
+      localStorage.removeItem(`ezseed_${farmer}_alloc_feedback`);
       localStorage.setItem(`ezseed_${farmer}_allotment`, allotment);
       window.location.href = `da-orderdetail.html?farmer=${farmer}&id=${orderId}`;
     });
-  } else {
-    const updateBtn = document.getElementById('da-update-status-btn');
-    if (updateBtn) {
-      const nextStatus = STATUS_NEXT[order.status];
-      if (!nextStatus) {
-        updateBtn.style.display = 'none';
-      } else {
-        updateBtn.style.display = '';
-        updateBtn.textContent = `Mark as: ${STATUS_LABELS[nextStatus]}`;
-        updateBtn.addEventListener('click', () => {
-          setOrderStatus(farmer, orderId, nextStatus);
-          window.location.href = `da-orderdetail.html?farmer=${farmer}&id=${orderId}`;
-        });
-      }
+  }
+
+  // Update status button (only when seeds are allocated)
+  const updateBtn = document.getElementById('da-update-status-btn');
+  if (updateBtn) {
+    const nextStatus = order.seeds?.length ? STATUS_NEXT[order.status] : null;
+    if (nextStatus) {
+      updateBtn.style.display = '';
+      updateBtn.textContent = `Mark as: ${STATUS_LABELS[nextStatus]}`;
+      updateBtn.addEventListener('click', () => {
+        setOrderStatus(farmer, orderId, nextStatus);
+        window.location.href = `da-orderdetail.html?farmer=${farmer}&id=${orderId}`;
+      });
+    } else {
+      updateBtn.style.display = 'none';
     }
   }
 }
@@ -1947,6 +2254,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'order-summary')  initOrderSummary();
   if (page === 'track-orders')   initTrackOrders();
   if (page === 'order-detail')   initOrderDetail();
+  if (page === 'allocation-view') initAllocationView();
   if (page === 'satisfaction')   { initSatisfaction(); }
   if (page === 'farmer-profile')       initFarmerProfile();
   if (page === 'farmer-register')      initFarmerRegister();
