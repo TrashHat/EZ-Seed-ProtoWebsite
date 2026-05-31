@@ -1511,6 +1511,23 @@ function makePieChart(canvasId, labels, data, colors) {
   });
 }
 
+function computeVRSRecommendation() {
+  const votes = getSurveyVotes();
+  const recs = getRecommendations();
+  const scored = SEEDS.map(seed => {
+    const v = votes[seed.id] || 0;
+    const stars = (recs.mao.includes(seed.id) ? 1 : 0) +
+                  (recs.pao.includes(seed.id) ? 1 : 0) +
+                  (recs.board.includes(seed.id) ? 1 : 0);
+    return { seed, score: v + stars * 0.5 };
+  });
+  const inbredTop = scored.filter(s => s.seed.type === 'Inbred')
+    .sort((a, b) => b.score - a.score).slice(0, 3).map(s => s.seed.id);
+  const hybridTop = scored.filter(s => s.seed.type === 'Hybrid')
+    .sort((a, b) => b.score - a.score).slice(0, 2).map(s => s.seed.id);
+  return [...inbredTop, ...hybridTop];
+}
+
 function initDASurvey() {
   updateNavGreeting();
   initBoardDefaults();
@@ -1561,7 +1578,7 @@ function initDASurvey() {
   const dEnt = Object.entries(yd.whatDone);
   makePieChart('chart-whatdone', dEnt.map(([k])=>k), dEnt.map(([,v])=>v), CHART_COLORS_MIXED);
 
-  // Section 5: Seed varieties available for allocation
+  // Section 5: VRS seed allocation
   const availSeeds = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
   const formEl     = document.getElementById('da-allocation-form');
   const summaryEl  = document.getElementById('da-allocation-summary');
@@ -1571,27 +1588,21 @@ function initDASurvey() {
     if (summaryEl) {
       summaryEl.style.display = '';
       const list = document.getElementById('da-allocation-summary-list');
-      if (list) list.innerHTML = availSeeds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span></div></div>`; }).join('');
+      if (list) list.innerHTML = availSeeds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
     }
     document.getElementById('da-change-allocation-btn')?.addEventListener('click', () => {
       localStorage.removeItem('ezseed_da_available_seeds');
+      localStorage.removeItem('ezseed_da_allocated_seeds');
       localStorage.removeItem('ezseed_da_seed_sacks');
       window.location.reload();
     });
   } else {
-    const checkboxes = document.getElementById('da-allocation-checkboxes');
-    if (checkboxes) {
-      checkboxes.innerHTML = SEEDS.map(seed => `
-        <label class="da-alloc-check-item">
-          <input type="checkbox" value="${seed.id}">
-          <span>${seed.name}</span>
-          <span class="badge badge-filled">${seed.type}</span>
-        </label>`).join('');
-    }
-    document.getElementById('da-set-allocation-btn')?.addEventListener('click', () => {
-      const selected = [...document.querySelectorAll('#da-allocation-checkboxes input:checked')].map(cb => cb.value);
-      if (selected.length === 0) return;
-      localStorage.setItem('ezseed_da_available_seeds', JSON.stringify(selected));
+    const vrsRec = computeVRSRecommendation();
+    const recList = document.getElementById('vrs-rec-list');
+    if (recList) recList.innerHTML = vrsRec.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
+    document.getElementById('da-confirm-vrs-btn')?.addEventListener('click', () => {
+      localStorage.setItem('ezseed_da_available_seeds', JSON.stringify(vrsRec));
+      localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(vrsRec));
       window.location.reload();
     });
   }
@@ -1761,60 +1772,26 @@ let daSelected = [];
 
 function initDASelectVarieties() {
   updateNavGreeting();
-  const saved = JSON.parse(localStorage.getItem('ezseed_da_allocated_seeds') || '[]');
+  const vrsRec = computeVRSRecommendation();
 
-  if (saved.length > 0) {
-    // Summary mode: already allocated
-    const formEl = document.getElementById('da-variety-form');
-    if (formEl) formEl.style.display = 'none';
-    const summaryEl = document.getElementById('da-variety-summary');
-    if (summaryEl) {
-      summaryEl.style.display = '';
-      const list = document.getElementById('da-variety-summary-list');
-      if (list) {
-        list.innerHTML = saved.map(id => {
-          const seed = getSeed(id); if (!seed) return '';
-          return `
-            <div class="sum-row">
-              <div class="sum-row-left">
-                <span class="sum-row-name">${seed.name}</span>
-                <span class="badge badge-filled">${seed.type}</span>
-                ${buildStars(seed)}
-              </div>
-            </div>`;
-        }).join('');
-      }
-    }
-    document.getElementById('da-change-alloc-btn')?.addEventListener('click', () => {
-      localStorage.removeItem('ezseed_da_allocated_seeds');
-      window.location.reload();
-    });
-    return;
+  function updateSlotBadge(sel) {
+    const seed = getSeed(sel.value);
+    const badge = sel.closest('.vrs-slot-row')?.querySelector('.vrs-slot-badge');
+    if (badge && seed) badge.textContent = seed.type;
   }
 
-  // Selection mode
-  daSelected = [];
-  injectDynamicStars();
-  document.querySelectorAll('.da-variety-row[data-seed-id]').forEach(row => {
-    row.addEventListener('click', () => {
-      const id = row.dataset.seedId;
-      const idx = daSelected.indexOf(id);
-      if (idx !== -1) {
-        daSelected.splice(idx, 1);
-      } else {
-        if (daSelected.length >= DA_MAX) return;
-        daSelected.push(id);
-      }
-      refreshDAVarietyUI();
-    });
+  document.querySelectorAll('.vrs-slot-select').forEach((sel, i) => {
+    sel.innerHTML = SEEDS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    sel.value = vrsRec[i] || SEEDS[i]?.id;
+    updateSlotBadge(sel);
+    sel.addEventListener('change', () => updateSlotBadge(sel));
   });
 
-  refreshDAVarietyUI();
-
-  document.getElementById('da-confirm-btn')?.addEventListener('click', () => {
-    if (daSelected.length === 0) return;
-    localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(daSelected));
-    window.location.href = 'da-varietiesset.html';
+  document.getElementById('da-manual-confirm-btn')?.addEventListener('click', () => {
+    const selected = [...document.querySelectorAll('.vrs-slot-select')].map(s => s.value);
+    localStorage.setItem('ezseed_da_available_seeds', JSON.stringify(selected));
+    localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(selected));
+    window.location.href = 'da-survey.html';
   });
 }
 
