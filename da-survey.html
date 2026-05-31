@@ -127,6 +127,12 @@
       <button id="da-change-allocation-btn" class="btn btn-secondary">Change Allocation</button>
     </div>
     <div id="da-allocation-form">
+      <div class="vrs-budget-area" style="margin-bottom:0.75rem;">
+        <label class="da-order-info-label" for="vrs-budget-input">Procurement Budget (PHP)</label>
+        <input id="vrs-budget-input" type="number" min="1" value="10000000" class="vrs-budget-input">
+      </div>
+      <p id="vrs-loading" style="display:none; color:#888; text-align:center; padding:0.5rem 0;">Computing optimal seed selection...</p>
+      <div id="vrs-cost-display" class="vrs-cost-display" style="display:none;"></div>
       <div id="vrs-rec-list" class="seed-list-v2" style="margin-bottom:1rem;"></div>
       <div class="next-area" style="display:flex; gap:0.75rem; flex-wrap:wrap;">
         <button id="da-confirm-vrs-btn" class="btn btn-primary">Confirm Seed Allocation</button>
@@ -172,8 +178,13 @@
         <div id="da-bulk-done-list" class="seed-list-v2" style="margin-bottom:0.75rem;"></div>
       </div>
       <div id="da-bulk-form" style="display:none;">
-        <div id="bulk-preview" class="seed-list-v2" style="margin-bottom:1rem;"></div>
-        <div class="next-area">
+        <div id="bulk-preview" class="seed-list-v2" style="margin-bottom:0.75rem;"></div>
+        <div id="bulk-pagination" class="bulk-pagination" style="display:none;">
+          <button id="bulk-page-prev" class="btn-page-arrow">&#8592;</button>
+          <span id="bulk-page-label" class="bulk-page-label"></span>
+          <button id="bulk-page-next" class="btn-page-arrow">&#8594;</button>
+        </div>
+        <div class="next-area" style="margin-top:0.75rem;">
           <button id="bulk-alloc-btn" class="btn btn-primary">Confirm Allocation</button>
         </div>
       </div>

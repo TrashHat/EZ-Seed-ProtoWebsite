@@ -1273,3 +1273,49 @@ body[data-page="da-home"] .bento-grid-v2 {
 .farmer-reg-sub {
   display: block; font-size: 0.78rem; color: #666; font-weight: 400; margin-top: 0.1rem;
 }
+
+/* ── VRS BUDGET INPUT + COST DISPLAY ─────────────────── */
+.vrs-budget-area { display: flex; flex-direction: column; gap: 0.3rem; }
+.vrs-budget-input {
+  padding: 0.45rem 0.75rem; border: 1.5px solid #ccc;
+  border-radius: var(--radius); font-size: 0.9rem;
+  font-family: inherit; color: var(--text-dark);
+  background: #fff; max-width: 260px;
+}
+.vrs-budget-input:focus { outline: none; border-color: var(--header-bg); }
+.vrs-cost-display {
+  background: #f0eedf; border-radius: var(--radius);
+  padding: 0.65rem 1rem; margin-bottom: 0.75rem;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.vrs-cost-line { font-size: 0.88rem; color: var(--text-dark); }
+.vrs-cost-over { color: #dc2626; }
+
+/* ── SACKS REMAINING (Section 6 done-list) ───────────── */
+.sack-remaining { font-size: 0.8rem; font-weight: 600; color: #555; white-space: nowrap; }
+.sack-remaining-over { color: #dc2626; }
+
+/* ── CLOSEST MATCH BADGE ─────────────────────────────── */
+.badge-closest {
+  background: #e0f2fe; color: #0369a1;
+  border: 1.5px solid #7dd3fc;
+  font-size: 0.72rem; font-weight: 700;
+  padding: 0.1rem 0.5rem; border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ── BULK ALLOCATION PAGINATION ──────────────────────── */
+.bulk-pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.75rem; margin-bottom: 0.75rem;
+}
+.btn-page-arrow {
+  width: 2rem; height: 2rem; border-radius: 50%;
+  border: 1.5px solid #ccc; background: #fff;
+  font-size: 1rem; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn-page-arrow:hover:not(:disabled) { border-color: var(--header-bg); background: var(--accent); }
+.btn-page-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
+.bulk-page-label { font-size: 0.85rem; font-weight: 600; color: var(--text-olive); min-width: 90px; text-align: center; }

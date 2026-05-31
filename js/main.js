@@ -52,6 +52,10 @@ const SEEDS = [
   }
 ];
 
+// ── SEED VECTOR CACHE (loaded async from CSVs for VRS / closest-seed) ──────
+let _seedVectors = null;
+let _seedPrices  = null;
+
 // ── KNOWN FARMERS ─────────────────────────────────────────────────────────
 const BASE_FARMERS = ['FarmerA', 'FarmerB'];
 
@@ -275,8 +279,14 @@ function getActiveAllocation() {
 }
 
 function buildSackAllocation(budgetSacks, availableSeeds) {
-  const { inbred: iv, hybrid: hv } = getSurveyVotesDetailed();
-  const votes = availableSeeds.map(id => ({ id, v: (iv[id]||0) + (hv[id]||0) }));
+  const vrsCounts = JSON.parse(localStorage.getItem('ezseed_da_vrs_counts') || 'null');
+  let votes;
+  if (vrsCounts) {
+    votes = availableSeeds.map(id => ({ id, v: vrsCounts[id] || 0 }));
+  } else {
+    const { inbred: iv, hybrid: hv } = getSurveyVotesDetailed();
+    votes = availableSeeds.map(id => ({ id, v: (iv[id]||0) + (hv[id]||0) }));
+  }
   const totalVotes = votes.reduce((s, x) => s + x.v, 0);
   let allocs = votes.map(({ id, v }) => {
     const exact = totalVotes > 0 ? (v / totalVotes) * budgetSacks : budgetSacks / availableSeeds.length;
@@ -304,13 +314,28 @@ function buildBulkPreview() {
   if (pending.length === 0) return [];
   const maxFarmers = Math.floor(totalSacks / ALLOTTED_SACKS);
   const slotted = pending.slice(0, maxFarmers);
-  const { inbred: iv, hybrid: hv } = getSurveyVotesDetailed();
-  const mostPopular = [...available].sort((a, b) => ((iv[b]||0)+(hv[b]||0)) - ((iv[a]||0)+(hv[a]||0)))[0];
+  const remaining = seedSacks ? { ...seedSacks } : Object.fromEntries(available.map(id => [id, ALLOTTED_SACKS]));
   return slotted.map(({ farmer, orderId }) => {
     const inbredPick = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]')[0];
     const hybridPick = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]')[0];
-    const matchedPick = [inbredPick, hybridPick].find(id => id && available.includes(id));
-    return { farmer, orderId, seedId: matchedPick || mostPopular, sacks: ALLOTTED_SACKS, isMatch: !!matchedPick };
+    const preferredId = [inbredPick, hybridPick].find(id => id && available.includes(id) && (remaining[id] || 0) >= ALLOTTED_SACKS);
+    let seedId, isMatch, isClosest;
+    if (preferredId) {
+      seedId = preferredId; isMatch = true; isClosest = false;
+    } else {
+      const primaryPick = [inbredPick, hybridPick].find(id => id && available.includes(id));
+      const withSacks   = available.filter(id => (remaining[id] || 0) >= ALLOTTED_SACKS);
+      if (withSacks.length === 0) {
+        seedId = available[0];
+      } else if (primaryPick) {
+        seedId = findClosestSeed(primaryPick, withSacks);
+      } else {
+        seedId = withSacks[0] || available[0];
+      }
+      isMatch = false; isClosest = !!primaryPick && seedId !== primaryPick;
+    }
+    if (remaining[seedId] !== undefined) remaining[seedId] -= ALLOTTED_SACKS;
+    return { farmer, orderId, seedId, sacks: ALLOTTED_SACKS, isMatch, isClosest };
   });
 }
 
@@ -1511,7 +1536,7 @@ function makePieChart(canvasId, labels, data, colors) {
   });
 }
 
-function computeVRSRecommendation() {
+function computeVRSFallback() {
   const votes = getSurveyVotes();
   const recs = getRecommendations();
   const scored = SEEDS.map(seed => {
@@ -1528,7 +1553,120 @@ function computeVRSRecommendation() {
   return [...inbredTop, ...hybridTop];
 }
 
-function initDASurvey() {
+async function loadSeedVectors() {
+  if (_seedVectors) return _seedVectors;
+  const DISEASE_ENC    = { Susceptible: 0, Intermediate: 1, Resistant: 2 };
+  const TENDERNESS_ENC = { Tough: 0, 'Slightly Tender': 1, Tender: 2 };
+  const TASTE_ENC      = { Bland: 0, 'Slightly Tasty': 1, Tasty: 2 };
+  const COLS = [
+    'Grain Length (mm)', 'Cooked Tenderness', 'Cooked Taste',
+    'Average yield (t/ha)', 'Maximum yield (t/ha)', 'Maturity (days)',
+    'Milling Recovery (percent)', 'Reaction to Blast',
+    'Reaction to Bacterial Leaf Blight (BLB)', 'Reaction to Tungro',
+    'Reaction to Brown Planthopper (BPH)', 'Reaction to Green Leafhopper (GLH)',
+    'Reaction to Stem Borer'
+  ];
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    return lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim());
+      const row = {};
+      headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+      return row;
+    });
+  }
+  function encodeRow(row) {
+    return COLS.map(col => {
+      const raw = (row[col] || '').trim();
+      if (col === 'Cooked Tenderness') return TENDERNESS_ENC[raw] !== undefined ? TENDERNESS_ENC[raw] : (parseFloat(raw) || 0);
+      if (col === 'Cooked Taste')      return TASTE_ENC[raw]      !== undefined ? TASTE_ENC[raw]      : (parseFloat(raw) || 0);
+      if (col.startsWith('Reaction to')) return DISEASE_ENC[raw]  !== undefined ? DISEASE_ENC[raw]   : (parseFloat(raw) || 0);
+      return parseFloat(raw) || 0;
+    });
+  }
+  const [inbredText, hybridText] = await Promise.all([
+    fetch('data/inbreddata.csv').then(r => r.text()),
+    fetch('data/hybriddata.csv').then(r => r.text())
+  ]);
+  const allRows = [...parseCSV(inbredText), ...parseCSV(hybridText)];
+  const rawVecs = allRows.map(encodeRow);
+  const mins = COLS.map((_, j) => Math.min(...rawVecs.map(r => r[j])));
+  const maxs = COLS.map((_, j) => Math.max(...rawVecs.map(r => r[j])));
+  const normalize = vec => vec.map((v, j) => maxs[j] > mins[j] ? (v - mins[j]) / (maxs[j] - mins[j]) : 0);
+  const normVecs = rawVecs.map(normalize);
+  const NAME_PATTERNS = {
+    rc222: /RC\s*222\b/i, rc216: /RC\s*216\b/i, rc402: /RC\s*402\b/i, rc436: /RC\s*436\b/i,
+    rc72h: /RC\s*72H\b/i, rc204h: /RC\s*204H\b/i, rc446h: /RC\s*446H\b/i
+  };
+  const vectors = {}, prices = {};
+  allRows.forEach((row, i) => {
+    const name = (row['Seed Variety'] || '');
+    Object.entries(NAME_PATTERNS).forEach(([id, pat]) => {
+      if (pat.test(name)) { vectors[id] = normVecs[i]; prices[id] = parseFloat(row['Average Price per Kilo (PHP)']) || 0; }
+    });
+  });
+  const PROXY_IDS = ['rc216', 'rc222', 'rc402', 'rc436'].filter(id => vectors[id]);
+  if (PROXY_IDS.length > 0) {
+    vectors.rc480 = COLS.map((_, j) => PROXY_IDS.reduce((s, id) => s + vectors[id][j], 0) / PROXY_IDS.length);
+    prices.rc480  = PROXY_IDS.reduce((s, id) => s + prices[id], 0) / PROXY_IDS.length;
+  }
+  _seedVectors = vectors;
+  _seedPrices  = prices;
+  return vectors;
+}
+
+function computeVRSRecommendationSSE(budget) {
+  if (!_seedVectors) return null;
+  const prefVecs = [];
+  getKnownFarmers().forEach(farmer => {
+    const ib = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]')[0];
+    const hy = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]')[0];
+    [ib, hy].forEach(id => { if (id && _seedVectors[id]) prefVecs.push({ id, vec: _seedVectors[id] }); });
+  });
+  if (prefVecs.length === 0) return { seeds: computeVRSFallback(), counts: {}, cost: 0, sse: 0, overBudget: false };
+  function eucSq(a, b) { return a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0); }
+  function combos(arr, k) {
+    if (k === 0) return [[]];
+    if (!arr.length) return [];
+    const [h, ...t] = arr;
+    return [...combos(t, k - 1).map(c => [h, ...c]), ...combos(t, k)];
+  }
+  const all = combos(SEEDS.map(s => s.id), 5);
+  let bestSSE = Infinity, bestCombo = null, bestCounts = null, bestCost = 0;
+  function evalCombo(combo) {
+    const cnt = Object.fromEntries(combo.map(id => [id, 0]));
+    let sse = 0;
+    prefVecs.forEach(({ vec }) => {
+      let near = combo[0], minD = eucSq(vec, _seedVectors[combo[0]] || vec);
+      combo.forEach(id => { if (!_seedVectors[id]) return; const d = eucSq(vec, _seedVectors[id]); if (d < minD) { minD = d; near = id; } });
+      cnt[near]++; sse += minD;
+    });
+    const cost = combo.reduce((s, id) => s + (cnt[id] * (_seedPrices[id] || 0) * 1000), 0);
+    return { sse, cnt, cost };
+  }
+  all.forEach(combo => {
+    const { sse, cnt, cost } = evalCombo(combo);
+    if (cost <= budget && sse < bestSSE) { bestSSE = sse; bestCombo = combo; bestCounts = cnt; bestCost = cost; }
+  });
+  if (!bestCombo) {
+    all.forEach(combo => {
+      const { sse, cnt, cost } = evalCombo(combo);
+      if (sse < bestSSE) { bestSSE = sse; bestCombo = combo; bestCounts = cnt; bestCost = cost; }
+    });
+  }
+  return { seeds: bestCombo || computeVRSFallback(), counts: bestCounts || {}, cost: bestCost, sse: bestSSE === Infinity ? 0 : bestSSE, overBudget: bestCost > budget };
+}
+
+function findClosestSeed(farmerPickId, candidateIds) {
+  if (!_seedVectors || !farmerPickId || !_seedVectors[farmerPickId]) return candidateIds[0];
+  const pv = _seedVectors[farmerPickId];
+  let closest = candidateIds[0], minD = Infinity;
+  candidateIds.forEach(id => { if (!_seedVectors[id]) return; const d = pv.reduce((s, v, i) => s + (v - _seedVectors[id][i]) ** 2, 0); if (d < minD) { minD = d; closest = id; } });
+  return closest;
+}
+
+async function initDASurvey() {
   updateNavGreeting();
   initBoardDefaults();
 
@@ -1537,7 +1675,6 @@ function initDASurvey() {
   const HYBRID_SEEDS = SEEDS.filter(s => s.type === 'Hybrid');
   function shortName(s) { return s.name.replace(/.*\(/, '').replace(')', ''); }
 
-  // Preference charts
   makePieChart('chart-inbred', INBRED_SEEDS.map(shortName), INBRED_SEEDS.map(s => iv[s.id] || 0), CHART_COLORS_OLIVE);
   makePieChart('chart-hybrid', HYBRID_SEEDS.map(shortName), HYBRID_SEEDS.map(s => hv[s.id] || 0), CHART_COLORS_BLUE);
   const pairEntries = Object.entries(pv).sort(([,a],[,b]) => b - a);
@@ -1546,7 +1683,6 @@ function initDASurvey() {
     makePieChart('chart-pair', pairLabels, pairEntries.map(([,v]) => v), CHART_COLORS_MIXED);
   } else { makePieChart('chart-pair', [], [], []); }
 
-  // VRS table
   const vrsBody = document.getElementById('vrs-table-body');
   if (vrsBody) {
     const top = pairEntries.slice(0, 5);
@@ -1557,16 +1693,11 @@ function initDASurvey() {
       vrsBody.innerHTML = top.map(([key, votes]) => {
         const [i,h] = key.split('||'); const si=getSeed(i),sh=getSeed(h);
         const matchPct = total > 0 ? Math.round((votes / (total / SEEDS.length)) * 100) : 0;
-        return `<tr>
-          <td>${si ? si.name : i}</td>
-          <td>${sh ? sh.name : h}</td>
-          <td>Matches Survey: ${Math.min(matchPct, 100)}%<br>Cost: Php 4.0M (10% above budget)</td>
-        </tr>`;
+        return `<tr><td>${si ? si.name : i}</td><td>${sh ? sh.name : h}</td><td>Matches Survey: ${Math.min(matchPct, 100)}%<br>Cost: Php 4.0M (10% above budget)</td></tr>`;
       }).join('');
     }
   }
 
-  // Post-survey charts
   const yd = getSurveyYieldData();
   makePieChart('chart-planted', ['Planted','Not Planted'], [yd.plantedCount, yd.notPlantedCount], CHART_COLORS_OLIVE);
   const mEnt = Object.entries(yd.methods);
@@ -1578,7 +1709,7 @@ function initDASurvey() {
   const dEnt = Object.entries(yd.whatDone);
   makePieChart('chart-whatdone', dEnt.map(([k])=>k), dEnt.map(([,v])=>v), CHART_COLORS_MIXED);
 
-  // Section 5: VRS seed allocation
+  // Section 5
   const availSeeds = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
   const formEl     = document.getElementById('da-allocation-form');
   const summaryEl  = document.getElementById('da-allocation-summary');
@@ -1594,15 +1725,47 @@ function initDASurvey() {
       localStorage.removeItem('ezseed_da_available_seeds');
       localStorage.removeItem('ezseed_da_allocated_seeds');
       localStorage.removeItem('ezseed_da_seed_sacks');
+      localStorage.removeItem('ezseed_da_vrs_counts');
       window.location.reload();
     });
   } else {
-    const vrsRec = computeVRSRecommendation();
-    const recList = document.getElementById('vrs-rec-list');
-    if (recList) recList.innerHTML = vrsRec.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
-    document.getElementById('da-confirm-vrs-btn')?.addEventListener('click', () => {
-      localStorage.setItem('ezseed_da_available_seeds', JSON.stringify(vrsRec));
-      localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(vrsRec));
+    const loadingEl   = document.getElementById('vrs-loading');
+    const costEl      = document.getElementById('vrs-cost-display');
+    const budgetInput = document.getElementById('vrs-budget-input');
+    const recList     = document.getElementById('vrs-rec-list');
+    const confirmBtn  = document.getElementById('da-confirm-vrs-btn');
+    if (loadingEl) loadingEl.style.display = '';
+    if (confirmBtn) confirmBtn.disabled = true;
+    let vrsResult = null;
+    try {
+      await loadSeedVectors();
+      vrsResult = computeVRSRecommendationSSE(parseInt(budgetInput?.value || '10000000'));
+    } catch (e) { vrsResult = null; }
+    if (loadingEl) loadingEl.style.display = 'none';
+    const vrsRec = vrsResult ? vrsResult.seeds : computeVRSFallback();
+    function renderRecList(seeds) {
+      if (recList) recList.innerHTML = seeds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
+    }
+    function showCost(result, budgetVal) {
+      if (!result || !costEl) return;
+      const fmt = n => '₱' + Math.round(n).toLocaleString();
+      costEl.innerHTML = `<span class="vrs-cost-line">Projected Procurement Cost: <strong>${fmt(result.cost)}</strong></span><span class="vrs-cost-line${result.overBudget ? ' vrs-cost-over' : ''}">Budget: ${fmt(budgetVal)}&nbsp;|&nbsp;Remaining: <strong>${fmt(budgetVal - result.cost)}</strong></span>`;
+      costEl.style.display = '';
+    }
+    renderRecList(vrsRec);
+    showCost(vrsResult, parseInt(budgetInput?.value || '10000000'));
+    if (confirmBtn) confirmBtn.disabled = false;
+    budgetInput?.addEventListener('input', () => {
+      if (!_seedVectors) return;
+      const budget = parseInt(budgetInput.value || '10000000');
+      vrsResult = computeVRSRecommendationSSE(budget);
+      if (vrsResult) { renderRecList(vrsResult.seeds); showCost(vrsResult, budget); }
+    });
+    confirmBtn?.addEventListener('click', () => {
+      const rec = vrsResult ? vrsResult.seeds : vrsRec;
+      localStorage.setItem('ezseed_da_available_seeds', JSON.stringify(rec));
+      localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(rec));
+      if (vrsResult) localStorage.setItem('ezseed_da_vrs_counts', JSON.stringify(vrsResult.counts));
       window.location.reload();
     });
   }
@@ -1617,54 +1780,57 @@ function initDASurvey() {
       : allRecIds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="da-survey-row"><div class="da-survey-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
   }
 
-  // Section 6: Sack allocation per variety
+  // Section 6
   const savedSacks    = JSON.parse(localStorage.getItem('ezseed_da_seed_sacks') || 'null');
+  const bulkPreview   = savedSacks ? buildBulkPreview() : null;
+  const bulkIsDone    = Array.isArray(bulkPreview) && bulkPreview.length === 0;
   const sackNoSeedsEl = document.getElementById('da-sack-no-seeds');
   const sackDoneEl    = document.getElementById('da-sack-done');
   const sackFormEl    = document.getElementById('da-sack-form');
 
   if (!availSeeds || availSeeds.length === 0) {
     if (sackNoSeedsEl) sackNoSeedsEl.style.display = '';
-    if (sackDoneEl) sackDoneEl.style.display = 'none';
-    if (sackFormEl) sackFormEl.style.display = 'none';
+    if (sackDoneEl)    sackDoneEl.style.display = 'none';
+    if (sackFormEl)    sackFormEl.style.display = 'none';
   } else if (savedSacks) {
     if (sackNoSeedsEl) sackNoSeedsEl.style.display = 'none';
-    if (sackDoneEl) sackDoneEl.style.display = '';
-    if (sackFormEl) sackFormEl.style.display = 'none';
+    if (sackDoneEl)    sackDoneEl.style.display = '';
+    if (sackFormEl)    sackFormEl.style.display = 'none';
     const doneList  = document.getElementById('da-sack-done-list');
     const doneTotal = document.getElementById('da-sack-done-total');
-    const total = Object.values(savedSacks).reduce((s, n) => s + n, 0);
     if (doneList) {
       doneList.innerHTML = availSeeds.map(id => {
         const seed = getSeed(id); if (!seed) return '';
-        const sacks = savedSacks[id] || 0;
+        const tot  = savedSacks[id] || 0;
+        const used = getKnownFarmers().reduce((sum, farmer) => {
+          const orders = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
+          return sum + orders.reduce((s, o) => { const m = o.seeds && o.seeds.find(sd => sd.id === id); return s + (m ? m.sacks : 0); }, 0);
+        }, 0);
+        const rem = tot - used;
         return `<div class="bulk-preview-row">
-          <div class="bulk-preview-left">
-            <span class="bulk-preview-farmer">${seed.name}</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div class="bulk-preview-left"><span class="bulk-preview-farmer">${seed.name}</span></div>
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
             <span class="badge badge-filled">${seed.type}</span>
-            <span class="sack-pill-dark">${sacks} sacks</span>
+            <span class="sack-pill-dark">${tot} sacks</span>
+            <span class="sack-remaining${rem < 0 ? ' sack-remaining-over' : ''}">${rem} / ${tot} left</span>
           </div>
         </div>`;
       }).join('');
     }
-    if (doneTotal) doneTotal.textContent = `Total: ${total} sacks`;
-    document.getElementById('da-change-sacks-btn')?.addEventListener('click', () => {
-      localStorage.removeItem('ezseed_da_seed_sacks');
-      window.location.reload();
-    });
+    if (doneTotal) doneTotal.textContent = `Total: ${Object.values(savedSacks).reduce((s, n) => s + n, 0)} sacks`;
+    const changeBtn = document.getElementById('da-change-sacks-btn');
+    if (changeBtn && bulkIsDone) changeBtn.style.display = 'none';
+    changeBtn?.addEventListener('click', () => { localStorage.removeItem('ezseed_da_seed_sacks'); window.location.reload(); });
   } else {
     if (sackNoSeedsEl) sackNoSeedsEl.style.display = 'none';
-    if (sackDoneEl) sackDoneEl.style.display = 'none';
-    if (sackFormEl) sackFormEl.style.display = '';
+    if (sackDoneEl)    sackDoneEl.style.display = 'none';
+    if (sackFormEl)    sackFormEl.style.display = '';
     const sackBudgetInput = document.getElementById('sack-budget-input');
     const sackInputsEl    = document.getElementById('sack-alloc-inputs');
     const sackTotalEl     = document.getElementById('sack-alloc-total');
     const sackWarningEl   = document.getElementById('sack-over-warning');
-
     function renderSackInputs() {
-      const budget   = parseInt(sackBudgetInput?.value || '200');
+      const budget    = parseInt(sackBudgetInput?.value || '200');
       const autoAlloc = buildSackAllocation(budget, availSeeds);
       if (!sackInputsEl) return;
       sackInputsEl.innerHTML = availSeeds.map(id => {
@@ -1674,68 +1840,60 @@ function initDASurvey() {
             <span class="bulk-preview-farmer">${seed.name}</span>
             <span class="badge badge-filled" style="align-self:flex-start;">${seed.type}</span>
           </div>
-          <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
             <input type="number" min="0" value="${autoAlloc[id] || 0}" data-seed="${id}" class="sack-qty-input">
-            <span style="font-size:0.85rem; color:#555;">sacks</span>
+            <span style="font-size:0.85rem;color:#555;">sacks</span>
           </div>
         </div>`;
       }).join('');
       document.querySelectorAll('.sack-qty-input').forEach(inp => inp.addEventListener('input', updateSackTotal));
       updateSackTotal();
     }
-
     function updateSackTotal() {
       const budget = parseInt(sackBudgetInput?.value || '200');
       const total  = [...document.querySelectorAll('.sack-qty-input')].reduce((s, inp) => s + (parseInt(inp.value) || 0), 0);
-      if (sackTotalEl) {
-        const color = total === budget ? '#16a34a' : total > budget ? '#dc2626' : 'var(--text-olive)';
-        sackTotalEl.style.color = color;
-        sackTotalEl.textContent = `Total: ${total} / ${budget} sacks`;
-      }
+      if (sackTotalEl) { sackTotalEl.style.color = total === budget ? '#16a34a' : total > budget ? '#dc2626' : 'var(--text-olive)'; sackTotalEl.textContent = `Total: ${total} / ${budget} sacks`; }
       if (sackWarningEl) sackWarningEl.style.display = total > budget ? '' : 'none';
     }
-
     sackBudgetInput?.addEventListener('input', renderSackInputs);
     renderSackInputs();
-
     document.getElementById('sack-confirm-btn')?.addEventListener('click', () => {
       const allocs = {};
-      document.querySelectorAll('.sack-qty-input').forEach(inp => {
-        allocs[inp.dataset.seed] = parseInt(inp.value) || 0;
-      });
+      document.querySelectorAll('.sack-qty-input').forEach(inp => { allocs[inp.dataset.seed] = parseInt(inp.value) || 0; });
       localStorage.setItem('ezseed_da_seed_sacks', JSON.stringify(allocs));
       window.location.reload();
     });
   }
 
-  // Section 7: Bulk farmer allocation
+  // Section 7
   const noSeedsEl  = document.getElementById('da-bulk-no-seeds');
   const bulkFormEl = document.getElementById('da-bulk-form');
   const bulkDoneEl = document.getElementById('da-bulk-done');
   const previewEl  = document.getElementById('bulk-preview');
 
   if (!savedSacks) {
-    if (noSeedsEl) noSeedsEl.style.display = '';
+    if (noSeedsEl)  noSeedsEl.style.display = '';
     if (bulkFormEl) bulkFormEl.style.display = 'none';
     if (bulkDoneEl) bulkDoneEl.style.display = 'none';
   } else {
     if (noSeedsEl) noSeedsEl.style.display = 'none';
-    const preview = buildBulkPreview();
+    const preview = bulkPreview;
 
     function renderBulkPreviewHTML(rows) {
-      return rows.map(({ farmer, seedId, sacks, isMatch }) => {
+      return rows.map(({ farmer, seedId, sacks, isMatch, isClosest }) => {
         const profile = getProfile(farmer);
         const seed    = getSeed(seedId);
         if (!seed) return '';
-        const pickBadge = isMatch ? '<span class="badge badge-your-pick">&#10003; Their Pick</span>' : '';
+        const pickBadge    = isMatch   ? '<span class="badge badge-your-pick">&#10003; Their Pick</span>' : '';
+        const closestBadge = isClosest ? '<span class="badge badge-closest">~ Closest Match</span>' : '';
         return `<div class="bulk-preview-row">
           <div class="bulk-preview-left">
             <span class="bulk-preview-farmer">${profile.name || farmer}</span>
             <span class="bulk-preview-seed">${seed.name}</span>
           </div>
-          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
             <span class="badge badge-filled">${seed.type}</span>
-            ${pickBadge}
+            ${pickBadge}${closestBadge}
             <span class="sack-pill-dark">${sacks} sacks</span>
           </div>
         </div>`;
@@ -1746,11 +1904,27 @@ function initDASurvey() {
       if (bulkFormEl) bulkFormEl.style.display = 'none';
       if (bulkDoneEl) bulkDoneEl.style.display = '';
       const doneList = document.getElementById('da-bulk-done-list');
-      if (doneList) doneList.innerHTML = '<p style="color:#888; text-align:center; padding:0.5rem 0;">All pending farmers have been allocated.</p>';
+      if (doneList) doneList.innerHTML = '<p style="color:#888;text-align:center;padding:0.5rem 0;">All pending farmers have been allocated.</p>';
     } else {
       if (bulkFormEl) bulkFormEl.style.display = '';
       if (bulkDoneEl) bulkDoneEl.style.display = 'none';
-      if (previewEl) previewEl.innerHTML = renderBulkPreviewHTML(preview);
+      const PAGE_SIZE = 10;
+      let bulkPage = 0;
+      function renderBulkPage() {
+        const totalPages = Math.ceil(preview.length / PAGE_SIZE);
+        if (previewEl) previewEl.innerHTML = renderBulkPreviewHTML(preview.slice(bulkPage * PAGE_SIZE, (bulkPage + 1) * PAGE_SIZE));
+        const pageLabelEl = document.getElementById('bulk-page-label');
+        if (pageLabelEl) pageLabelEl.textContent = totalPages > 1 ? `Page ${bulkPage + 1} of ${totalPages}` : '';
+        const prevBtn = document.getElementById('bulk-page-prev');
+        const nextBtn = document.getElementById('bulk-page-next');
+        if (prevBtn) prevBtn.disabled = bulkPage === 0;
+        if (nextBtn) nextBtn.disabled = bulkPage >= totalPages - 1;
+        const paginationEl = document.getElementById('bulk-pagination');
+        if (paginationEl) paginationEl.style.display = totalPages > 1 ? '' : 'none';
+      }
+      document.getElementById('bulk-page-prev')?.addEventListener('click', () => { if (bulkPage > 0) { bulkPage--; renderBulkPage(); } });
+      document.getElementById('bulk-page-next')?.addEventListener('click', () => { if (bulkPage < Math.ceil(preview.length / PAGE_SIZE) - 1) { bulkPage++; renderBulkPage(); } });
+      renderBulkPage();
       document.getElementById('bulk-alloc-btn')?.addEventListener('click', () => {
         const current = buildBulkPreview();
         if (!current || current.length === 0) return;
@@ -1761,6 +1935,8 @@ function initDASurvey() {
           const doneList = document.getElementById('da-bulk-done-list');
           if (doneList) doneList.innerHTML = renderBulkPreviewHTML(current);
         }
+        const changeBtn = document.getElementById('da-change-sacks-btn');
+        if (changeBtn) changeBtn.style.display = 'none';
       });
     }
   }
@@ -1772,7 +1948,7 @@ let daSelected = [];
 
 function initDASelectVarieties() {
   updateNavGreeting();
-  const vrsRec = computeVRSRecommendation();
+  const vrsRec = computeVRSFallback();
 
   function updateSlotBadge(sel) {
     const seed = getSeed(sel.value);
