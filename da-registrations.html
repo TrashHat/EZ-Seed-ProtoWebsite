@@ -20,7 +20,32 @@
 
   <div class="page">
     <h1 class="page-title">Farmer Registrations</h1>
-    <div id="reg-list"></div>
+
+    <h2 class="da-section-title" id="section-pending">Pending Registrations</h2>
+    <div class="filter-row-v2" id="pending-chip-row">
+      <button class="reg-chip active" data-filter="all">All</button>
+      <button class="reg-chip" data-filter="pending">Pending</button>
+      <button class="reg-chip" data-filter="approved">Approved</button>
+      <button class="reg-chip" data-filter="rejected">Rejected</button>
+    </div>
+    <div id="pending-list"></div>
+
+    <h2 class="da-section-title" id="section-registered" style="margin-top: 2.5rem;">Registered Farmers</h2>
+    <div class="da-filter-bar">
+      <select class="da-filter-select" id="reg-province-filter">
+        <option value="">All Provinces</option>
+      </select>
+      <select class="da-filter-select" id="reg-muni-filter">
+        <option value="">All Municipalities</option>
+      </select>
+      <select class="da-filter-select" id="reg-size-filter">
+        <option value="">All Farm Sizes</option>
+        <option value="small">Less than 1 ha</option>
+        <option value="medium">1 – 3 ha</option>
+        <option value="large">More than 3 ha</option>
+      </select>
+    </div>
+    <div id="registered-list"></div>
   </div>
 
   <script src="js/main.js"></script>

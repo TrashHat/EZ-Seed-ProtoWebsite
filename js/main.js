@@ -1291,25 +1291,116 @@ function initDAHome() {
 // ── DA REGISTRATIONS LIST ──────────────────────────────────────────────────
 function initDARegistrations() {
   updateNavGreeting();
-  const list = document.getElementById('reg-list');
-  if (!list) return;
 
   const REG_LABEL = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
   const REG_CLASS = { pending: 'status-pending', approved: 'status-allocated', rejected: 'status-germination' };
-
   const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
 
-  if (regs.length === 0) {
-    list.innerHTML = '<p style="text-align:center; color:#888; margin-top:2rem;">No registration applications yet.</p>';
-    return;
+  // ── Pending Registrations ──────────────────────────────
+  const pendingListEl = document.getElementById('pending-list');
+  let pendingFilter = 'all';
+
+  function renderPendingList() {
+    if (!pendingListEl) return;
+    const filtered = pendingFilter === 'all' ? regs : regs.filter(r => r.status === pendingFilter);
+    if (filtered.length === 0) {
+      pendingListEl.innerHTML = '<p style="text-align:center; color:#888; padding:1rem 0;">No applications match this filter.</p>';
+      return;
+    }
+    pendingListEl.innerHTML = filtered.map(reg => `
+      <div class="request-row">
+        <span class="request-season">${reg.name} <span style="font-weight:400;font-size:0.82rem;">(${reg.username})</span></span>
+        <span class="${REG_CLASS[reg.status] || ''}">${REG_LABEL[reg.status] || reg.status}</span>
+        <a href="da-registrationdetail.html?farmer=${reg.username}" class="btn-details">Review</a>
+      </div>`).join('');
   }
 
-  list.innerHTML = regs.map(reg => `
-    <div class="request-row">
-      <span class="request-season">${reg.name} <span style="font-weight:400;font-size:0.82rem;">(${reg.username})</span></span>
-      <span class="${REG_CLASS[reg.status] || ''}">${REG_LABEL[reg.status] || reg.status}</span>
-      <a href="da-registrationdetail.html?farmer=${reg.username}" class="btn-details">Review</a>
-    </div>`).join('');
+  document.querySelectorAll('#pending-chip-row .reg-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      pendingFilter = chip.dataset.filter;
+      document.querySelectorAll('#pending-chip-row .reg-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      renderPendingList();
+    });
+  });
+
+  renderPendingList();
+
+  // ── Registered Farmers ────────────────────────────────
+  const registeredListEl = document.getElementById('registered-list');
+  const approvedDynamic  = regs.filter(r => r.status === 'approved');
+  const allRegistered = [
+    ...BASE_FARMERS.map(f => {
+      const p = FARMER_PROFILES[f];
+      return { username: f, name: p.name, location: p.location, hectares: p.hectares };
+    }),
+    ...approvedDynamic.map(r => ({ username: r.username, name: r.name, location: r.location, hectares: r.hectares }))
+  ];
+
+  function parseLocation(loc) {
+    const parts = (loc || '').split(',').map(s => s.trim());
+    return { municipality: parts[0] || '', province: parts[1] || '' };
+  }
+
+  function sizeCategory(ha) {
+    const n = parseFloat((ha || '').replace(/[^0-9.]/g, ''));
+    if (isNaN(n)) return '';
+    return n < 1 ? 'small' : n <= 3 ? 'medium' : 'large';
+  }
+
+  const provinceSel = document.getElementById('reg-province-filter');
+  const muniSel     = document.getElementById('reg-muni-filter');
+  const sizeSel     = document.getElementById('reg-size-filter');
+
+  const provinces      = [...new Set(allRegistered.map(f => parseLocation(f.location).province).filter(Boolean))];
+  const municipalities = [...new Set(allRegistered.map(f => parseLocation(f.location).municipality).filter(Boolean))];
+
+  if (provinceSel) {
+    provinces.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; provinceSel.appendChild(o); });
+    provinceSel.addEventListener('change', renderRegisteredList);
+  }
+  if (muniSel) {
+    municipalities.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; muniSel.appendChild(o); });
+    muniSel.addEventListener('change', renderRegisteredList);
+  }
+  if (sizeSel) sizeSel.addEventListener('change', renderRegisteredList);
+
+  function renderRegisteredList() {
+    if (!registeredListEl) return;
+    const province = provinceSel?.value || '';
+    const muni     = muniSel?.value || '';
+    const size     = sizeSel?.value || '';
+
+    const filtered = allRegistered.filter(f => {
+      const loc = parseLocation(f.location);
+      if (province && loc.province !== province)       return false;
+      if (muni     && loc.municipality !== muni)       return false;
+      if (size     && sizeCategory(f.hectares) !== size) return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      registeredListEl.innerHTML = '<p style="text-align:center; color:#888; padding:1rem 0;">No farmers match this filter.</p>';
+      return;
+    }
+
+    registeredListEl.innerHTML = filtered.map(f => `
+      <div class="request-row">
+        <span class="request-season">
+          ${f.name} <span style="font-weight:400;font-size:0.82rem;">(${f.username})</span>
+          <span class="farmer-reg-sub">${f.location || '—'} &bull; ${f.hectares || '—'}</span>
+        </span>
+        <span class="status-allocated">Approved</span>
+      </div>`).join('');
+  }
+
+  renderRegisteredList();
+
+  // Auto-scroll to section from URL param
+  const tab = new URLSearchParams(window.location.search).get('tab');
+  if (tab === 'registered') {
+    setTimeout(() => document.getElementById('section-registered')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
 }
 
 // ── DA REGISTRATION DETAIL ─────────────────────────────────────────────────
