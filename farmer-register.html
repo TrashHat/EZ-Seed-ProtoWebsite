@@ -3,44 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EZ-Seed — Farmer Registration</title>
+  <title>EZ-Seed — Register</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body data-page="farmer-register">
 
-  <nav class="navbar">
-    <div class="navbar-left">
-      <a href="viewprofile.html" class="navbar-home">&#8592; Back</a>
-    </div>
-    <div class="navbar-right">
-      <span class="navbar-greeting">Welcome, Farmer!</span>
-      <div class="navbar-avatar"></div>
-    </div>
-  </nav>
+  <div class="login-wrap">
+    <div class="login-card">
+      <img src="assets/ez-seed-logo.png" alt="EZ-Seed" class="login-logo">
+      <h1 class="login-title">Create Account</h1>
+      <p class="login-sub">Register as a farmer. A DA Officer will approve your account before you can log in.</p>
 
-  <div class="page">
-    <h1 class="page-title">Farmer Registration</h1>
-    <p class="page-subtitle">Fill in your details to submit a registration application to the DA Officer.</p>
+      <p id="reg-error" class="login-error" style="display:none;"></p>
 
-    <form id="reg-form" class="reg-form">
-      <div class="reg-field-group">
-        <label class="reg-label" for="reg-name">Full Name</label>
-        <input class="reg-input" id="reg-name" type="text" placeholder="e.g. Juan dela Cruz" required>
+      <form id="reg-form">
+        <input class="login-field" id="reg-username" type="text" placeholder="Choose a username" autocomplete="username" required>
+        <input class="login-field" id="reg-password" type="password" placeholder="Choose a password" autocomplete="new-password" required>
+        <input class="login-field" id="reg-name" type="text" placeholder="Full name (e.g. Juan dela Cruz)" required>
+        <input class="login-field" id="reg-location" type="text" placeholder="Location (e.g. Calauan, Laguna)" required>
+        <input class="login-field" id="reg-contact" type="text" placeholder="Contact number (e.g. 0917-123-4567)" required>
+        <input class="login-field" id="reg-hectares" type="text" placeholder="Farm size (e.g. 2.5 ha)" required>
+        <button type="submit" class="btn-login">Submit Registration</button>
+      </form>
+
+      <div id="reg-success" style="display:none; text-align:center; padding:1rem 0;">
+        <p style="color:var(--text-olive); font-weight:600; margin-bottom:0.5rem;">Registration submitted!</p>
+        <p style="font-size:0.9rem; color:#555;">A DA Officer will review your application. Wait for approval before logging in.</p>
       </div>
-      <div class="reg-field-group">
-        <label class="reg-label" for="reg-location">Location (Municipality, Province)</label>
-        <input class="reg-input" id="reg-location" type="text" placeholder="e.g. Calauan, Laguna" required>
-      </div>
-      <div class="reg-field-group">
-        <label class="reg-label" for="reg-contact">Contact Number</label>
-        <input class="reg-input" id="reg-contact" type="text" placeholder="e.g. 0917-123-4567" required>
-      </div>
-      <div class="reg-field-group">
-        <label class="reg-label" for="reg-hectares">Farm Size</label>
-        <input class="reg-input" id="reg-hectares" type="text" placeholder="e.g. 2.5 ha" required>
-      </div>
-      <button type="submit" class="btn btn-primary reg-submit-btn">Submit Application</button>
-    </form>
+
+      <a href="index.html" class="login-hint" style="display:block; margin-top:1rem; text-decoration:underline;">&#8592; Back to Login</a>
+    </div>
   </div>
 
   <script src="js/main.js"></script>

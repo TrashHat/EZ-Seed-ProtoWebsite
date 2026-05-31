@@ -52,7 +52,7 @@ body {
 .navbar-avatar {
   width: 48px;
   height: 48px;
-  background: var(--accent);
+  background: url('../assets/ez-seed-logo.png') center / contain no-repeat;
   flex-shrink: 0;
 }
 

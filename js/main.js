@@ -53,7 +53,13 @@ const SEEDS = [
 ];
 
 // ── KNOWN FARMERS ─────────────────────────────────────────────────────────
-const KNOWN_FARMERS = ['FarmerA', 'FarmerB'];
+const BASE_FARMERS = ['FarmerA', 'FarmerB'];
+
+function getKnownFarmers() {
+  const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
+  const approved = regs.filter(r => r.status === 'approved').map(r => r.username);
+  return [...BASE_FARMERS, ...approved];
+}
 
 // ── FARMER PROFILES (set by registration system, read-only in app) ─────────
 const FARMER_PROFILES = {
@@ -134,7 +140,7 @@ function getAllOrders() {
 function getAllFarmerOrders() {
   const result = [];
   applyStatusOverrides(DEFAULT_ORDERS).forEach(o => result.push({ ...o, farmer: 'FarmerA' }));
-  KNOWN_FARMERS.forEach(farmer => {
+  getKnownFarmers().forEach(farmer => {
     const orders = applyStatusOverrides(JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]'));
     orders.forEach(o => result.push({ ...o, farmer }));
   });
@@ -156,7 +162,7 @@ function setOrderStatus(farmer, orderId, newStatus) {
 
 function getSurveyVotes() {
   const votes = {};
-  KNOWN_FARMERS.forEach(farmer => {
+  getKnownFarmers().forEach(farmer => {
     if (localStorage.getItem(`ezseed_${farmer}_survey_submitted`) !== 'true') return;
     const inbred = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]');
     const hybrid = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]');
@@ -199,7 +205,7 @@ function getSurveyYieldData() {
   const waterSources = { ...(d.waterSources || {}) };
   const reasons      = { ...(d.reasons      || {}) };
   const whatDone     = { ...(d.whatDone     || {}) };
-  KNOWN_FARMERS.forEach(farmer => {
+  getKnownFarmers().forEach(farmer => {
     const data = JSON.parse(localStorage.getItem(`ezseed_${farmer}_yield_survey`) || 'null');
     if (!data) return;
     if (data.planted) {
@@ -236,7 +242,7 @@ function getSurveyVotesDetailed() {
   const inbred = { ...base.inbred };
   const hybrid = { ...base.hybrid };
   const pairs  = { ...(base.pairs || {}) };
-  KNOWN_FARMERS.forEach(farmer => {
+  getKnownFarmers().forEach(farmer => {
     if (localStorage.getItem(`ezseed_${farmer}_survey_submitted`) !== 'true') return;
     const inbredIds = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]');
     const hybridIds = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]');
@@ -290,7 +296,7 @@ function buildBulkPreview() {
     ? Object.values(seedSacks).reduce((s, n) => s + n, 0)
     : available.length * ALLOTTED_SACKS;
   const pending = [];
-  KNOWN_FARMERS.forEach(farmer => {
+  getKnownFarmers().forEach(farmer => {
     const orders = applyStatusOverrides(JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]'));
     const order = orders.find(o => o.status === 'decision_pending' && (!o.seeds || !o.seeds.length));
     if (order) pending.push({ farmer, orderId: order.id });
@@ -410,8 +416,25 @@ function buildBadges(seed) {
 
 // ── NAV GREETING ───────────────────────────────────────────────────────────
 function updateNavGreeting() {
+  const role = localStorage.getItem('ezseed_role');
+  const user = currentUser();
+  let greeting;
+  if (role === 'daofficer') {
+    greeting = 'Welcome, Officer!';
+  } else if (role === 'daboard') {
+    greeting = 'Welcome, Board!';
+  } else {
+    const verified = localStorage.getItem(`ezseed_${user}_verified`) === 'true';
+    if (verified) {
+      const profile = getProfile(user);
+      const firstName = profile.name ? profile.name.split(' ')[0] : null;
+      greeting = firstName ? `Welcome, ${firstName}!` : 'Welcome, Farmer!';
+    } else {
+      greeting = 'Welcome, Farmer!';
+    }
+  }
   document.querySelectorAll('.navbar-greeting').forEach(el => {
-    el.textContent = `Welcome, ${currentUser()}!`;
+    el.textContent = greeting;
   });
 }
 
@@ -459,6 +482,7 @@ function initLogin() {
     if ((user === 'FarmerA' || user === 'FarmerB') && pass === 'IAmTheFarmerNow') {
       localStorage.setItem('ezseed_user', user);
       localStorage.setItem('ezseed_role', 'farmer');
+      localStorage.setItem(`ezseed_${user}_verified`, 'true');
       window.location.href = 'dashboard.html';
     } else if (user === 'DAOfficer' && pass === 'IAmTheDANow') {
       localStorage.setItem('ezseed_user', user);
@@ -469,7 +493,25 @@ function initLogin() {
       localStorage.setItem('ezseed_role', 'daboard');
       window.location.href = 'board-index.html';
     } else {
-      err.style.display = 'block';
+      const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
+      const reg = regs.find(r => r.username === user && r.password === pass);
+      if (reg) {
+        if (reg.status === 'approved') {
+          localStorage.setItem('ezseed_user', user);
+          localStorage.setItem('ezseed_role', 'farmer');
+          localStorage.setItem(`ezseed_${user}_verified`, 'true');
+          window.location.href = 'dashboard.html';
+        } else if (reg.status === 'pending') {
+          err.textContent = 'Your registration is pending DA approval.';
+          err.style.display = 'block';
+        } else {
+          err.textContent = 'Your registration was rejected by the DA.';
+          err.style.display = 'block';
+        }
+      } else {
+        err.textContent = 'Invalid username or password.';
+        err.style.display = 'block';
+      }
     }
   });
 
@@ -1067,10 +1109,10 @@ function initSatisfaction() {
 
 // ── FARMER PROFILE ─────────────────────────────────────────────────────────
 function getProfile(farmer) {
-  const regStatus = localStorage.getItem(`ezseed_${farmer}_reg_status`);
-  const regData   = JSON.parse(localStorage.getItem(`ezseed_${farmer}_registration`) || 'null');
-  if (regStatus === 'approved' && regData) return regData;
-  return FARMER_PROFILES[farmer] || {};
+  if (BASE_FARMERS.includes(farmer)) return FARMER_PROFILES[farmer] || {};
+  const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
+  const entry = regs.find(r => r.username === farmer && r.status === 'approved');
+  return entry || {};
 }
 
 function initFarmerProfile() {
@@ -1089,29 +1131,6 @@ function initFarmerProfile() {
   const haEl = document.getElementById('profile-hectares');
   if (haEl) haEl.textContent = profile.hectares || '—';
 
-  const area      = document.getElementById('reg-status-area');
-  const regStatus = localStorage.getItem(farmerKey('reg_status'));
-
-  if (area) {
-    if (!regStatus) {
-      area.innerHTML = `
-        <p class="reg-status-text reg-none">Not yet registered.</p>
-        <a href="farmer-register.html" class="btn btn-primary" style="display:inline-block; margin-top:0.5rem;">Submit Registration</a>`;
-    } else if (regStatus === 'pending') {
-      area.innerHTML = `<p class="reg-status-text reg-pending">&#9203; Registration Pending — awaiting DA review.</p>`;
-    } else if (regStatus === 'rejected') {
-      const reasons = JSON.parse(localStorage.getItem(farmerKey('reg_rejection')) || '[]');
-      const reasonList = reasons.length > 0
-        ? `<ul class="reg-rejection-list">${reasons.map(r => `<li>${r}</li>`).join('')}</ul>` : '';
-      area.innerHTML = `
-        <p class="reg-status-text reg-rejected">&#10007; Registration Rejected</p>
-        ${reasonList}
-        <a href="farmer-register.html" class="btn btn-primary" style="display:inline-block; margin-top:0.75rem;">Resubmit Registration</a>`;
-    } else if (regStatus === 'approved') {
-      area.innerHTML = `<p class="reg-status-text reg-approved">&#10003; Verified</p>`;
-    }
-  }
-
   document.getElementById('reset-my-data-btn')?.addEventListener('click', () => {
     if (confirm(`Reset all data for ${user}? This cannot be undone.`)) {
       resetFarmerData();
@@ -1122,33 +1141,28 @@ function initFarmerProfile() {
 
 // ── FARMER REGISTRATION FORM ───────────────────────────────────────────────
 function initFarmerRegister() {
-  updateNavGreeting();
-  const regStatus = localStorage.getItem(farmerKey('reg_status'));
-  if (regStatus === 'rejected') {
-    const existing = JSON.parse(localStorage.getItem(farmerKey('registration')) || 'null');
-    if (existing) {
-      const n = document.getElementById('reg-name');
-      const l = document.getElementById('reg-location');
-      const c = document.getElementById('reg-contact');
-      const h = document.getElementById('reg-hectares');
-      if (n) n.value = existing.name || '';
-      if (l) l.value = existing.location || '';
-      if (c) c.value = existing.contact || '';
-      if (h) h.value = existing.hectares || '';
-    }
-  }
+  const errEl     = document.getElementById('reg-error');
+  const successEl = document.getElementById('reg-success');
   document.getElementById('reg-form')?.addEventListener('submit', e => {
     e.preventDefault();
-    const data = {
-      name:     document.getElementById('reg-name').value.trim(),
-      location: document.getElementById('reg-location').value.trim(),
-      contact:  document.getElementById('reg-contact').value.trim(),
-      hectares: document.getElementById('reg-hectares').value.trim()
-    };
-    localStorage.setItem(farmerKey('registration'), JSON.stringify(data));
-    localStorage.setItem(farmerKey('reg_status'), 'pending');
-    localStorage.removeItem(farmerKey('reg_rejection'));
-    window.location.href = 'viewprofile.html';
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const name     = document.getElementById('reg-name').value.trim();
+    const location = document.getElementById('reg-location').value.trim();
+    const contact  = document.getElementById('reg-contact').value.trim();
+    const hectares = document.getElementById('reg-hectares').value.trim();
+
+    const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
+    const allTaken = [...BASE_FARMERS, 'DAOfficer', 'DABoard', ...regs.map(r => r.username)];
+    if (allTaken.map(u => u.toLowerCase()).includes(username.toLowerCase())) {
+      if (errEl) { errEl.textContent = 'That username is already taken.'; errEl.style.display = ''; }
+      return;
+    }
+    if (errEl) errEl.style.display = 'none';
+    regs.push({ username, password, name, location, contact, hectares, status: 'pending' });
+    localStorage.setItem('ezseed_pending_registrations', JSON.stringify(regs));
+    document.getElementById('reg-form').style.display = 'none';
+    if (successEl) successEl.style.display = '';
   });
 }
 
@@ -1265,7 +1279,8 @@ function initFarmerQRScan() {
 // ── DA HOME ────────────────────────────────────────────────────────────────
 function initDAHome() {
   updateNavGreeting();
-  const pending = KNOWN_FARMERS.filter(f => localStorage.getItem(`ezseed_${f}_reg_status`) === 'pending').length;
+  const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
+  const pending = regs.filter(r => r.status === 'pending').length;
   const badge = document.getElementById('reg-pending-badge');
   if (badge && pending > 0) {
     badge.textContent = pending;
@@ -1282,52 +1297,55 @@ function initDARegistrations() {
   const REG_LABEL = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
   const REG_CLASS = { pending: 'status-pending', approved: 'status-allocated', rejected: 'status-germination' };
 
-  const rows = KNOWN_FARMERS.map(farmer => {
-    const status = localStorage.getItem(`ezseed_${farmer}_reg_status`);
-    const data   = JSON.parse(localStorage.getItem(`ezseed_${farmer}_registration`) || 'null');
-    return { farmer, status, data };
-  }).filter(r => r.status);
+  const regs = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
 
-  if (rows.length === 0) {
+  if (regs.length === 0) {
     list.innerHTML = '<p style="text-align:center; color:#888; margin-top:2rem;">No registration applications yet.</p>';
     return;
   }
 
-  list.innerHTML = rows.map(({ farmer, status, data }) => `
+  list.innerHTML = regs.map(reg => `
     <div class="request-row">
-      <span class="request-season">${data ? data.name : farmer} <span style="font-weight:400;font-size:0.82rem;">(${farmer})</span></span>
-      <span class="${REG_CLASS[status]}">${REG_LABEL[status]}</span>
-      <a href="da-registrationdetail.html?farmer=${farmer}" class="btn-details">Review</a>
+      <span class="request-season">${reg.name} <span style="font-weight:400;font-size:0.82rem;">(${reg.username})</span></span>
+      <span class="${REG_CLASS[reg.status] || ''}">${REG_LABEL[reg.status] || reg.status}</span>
+      <a href="da-registrationdetail.html?farmer=${reg.username}" class="btn-details">Review</a>
     </div>`).join('');
 }
 
 // ── DA REGISTRATION DETAIL ─────────────────────────────────────────────────
 function initDARegistrationDetail() {
   updateNavGreeting();
-  const params  = new URLSearchParams(window.location.search);
-  const farmer  = params.get('farmer') || 'FarmerA';
-  const data    = JSON.parse(localStorage.getItem(`ezseed_${farmer}_registration`) || 'null');
-  const status  = localStorage.getItem(`ezseed_${farmer}_reg_status`) || 'pending';
+  const params   = new URLSearchParams(window.location.search);
+  const username = params.get('farmer') || '';
+
+  const regs   = JSON.parse(localStorage.getItem('ezseed_pending_registrations') || '[]');
+  const regIdx = regs.findIndex(r => r.username === username);
 
   const bodyEl = document.getElementById('reg-detail-body');
-  if (bodyEl && data) {
+  if (regIdx === -1) {
+    if (bodyEl) bodyEl.innerHTML = '<p style="color:#888;">Registration not found.</p>';
+    return;
+  }
+  const reg = regs[regIdx];
+
+  if (bodyEl) {
     const REG_LABEL = { pending: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
     bodyEl.innerHTML = `
       <div class="da-order-info">
-        <div class="da-order-info-row"><span class="da-order-info-label">Farmer ID</span><span class="da-order-info-value">${farmer}</span></div>
-        <div class="da-order-info-row"><span class="da-order-info-label">Full Name</span><span class="da-order-info-value">${data.name}</span></div>
-        <div class="da-order-info-row"><span class="da-order-info-label">Location</span><span class="da-order-info-value">${data.location}</span></div>
-        <div class="da-order-info-row"><span class="da-order-info-label">Contact</span><span class="da-order-info-value">${data.contact}</span></div>
-        <div class="da-order-info-row"><span class="da-order-info-label">Farm Size</span><span class="da-order-info-value">${data.hectares}</span></div>
-        <div class="da-order-info-row"><span class="da-order-info-label">Status</span><span class="da-order-info-value">${REG_LABEL[status] || status}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Username</span><span class="da-order-info-value">${reg.username}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Full Name</span><span class="da-order-info-value">${reg.name}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Location</span><span class="da-order-info-value">${reg.location}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Contact</span><span class="da-order-info-value">${reg.contact}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Farm Size</span><span class="da-order-info-value">${reg.hectares}</span></div>
+        <div class="da-order-info-row"><span class="da-order-info-label">Status</span><span class="da-order-info-value">${REG_LABEL[reg.status] || reg.status}</span></div>
       </div>`;
   }
 
   const actionEl = document.getElementById('reg-action-area');
   if (!actionEl) return;
 
-  if (status !== 'pending') {
-    const msg = status === 'approved' ? 'This application has been approved.' : 'This application has been rejected.';
+  if (reg.status !== 'pending') {
+    const msg = reg.status === 'approved' ? 'This application has been approved.' : 'This application has been rejected.';
     actionEl.innerHTML = `<p style="text-align:center; margin-top:1.5rem; color:#888;">${msg}</p>`;
     return;
   }
@@ -1339,8 +1357,9 @@ function initDARegistrationDetail() {
     </div>`;
 
   document.getElementById('approve-btn')?.addEventListener('click', () => {
-    localStorage.setItem(`ezseed_${farmer}_reg_status`, 'approved');
-    localStorage.setItem(`ezseed_${farmer}_verified`, 'true');
+    regs[regIdx].status = 'approved';
+    localStorage.setItem('ezseed_pending_registrations', JSON.stringify(regs));
+    localStorage.setItem(`ezseed_${username}_verified`, 'true');
     window.location.href = 'da-registrations.html';
   });
 
@@ -1361,9 +1380,10 @@ function initDARegistrationDetail() {
     const othersCheck = document.getElementById('reject-others-check');
     const othersText  = document.getElementById('reject-others-text');
     if (othersCheck?.checked && othersText?.value.trim()) reasons.push(othersText.value.trim());
-    localStorage.setItem(`ezseed_${farmer}_reg_status`, 'rejected');
-    localStorage.setItem(`ezseed_${farmer}_reg_rejection`, JSON.stringify(reasons));
-    localStorage.removeItem(`ezseed_${farmer}_verified`);
+    regs[regIdx].status = 'rejected';
+    regs[regIdx].rejectionReasons = reasons;
+    localStorage.setItem('ezseed_pending_registrations', JSON.stringify(regs));
+    localStorage.removeItem(`ezseed_${username}_verified`);
     window.location.href = 'da-registrations.html';
   });
 }
