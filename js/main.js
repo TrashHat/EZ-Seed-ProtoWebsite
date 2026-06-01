@@ -1669,6 +1669,7 @@ function findClosestSeed(farmerPickId, candidateIds) {
 async function initDASurvey() {
   updateNavGreeting();
   initBoardDefaults();
+  try { await loadSeedVectors(); } catch(e) {}
 
   const { inbred: iv, hybrid: hv, pairs: pv } = getSurveyVotesDetailed();
   const INBRED_SEEDS = SEEDS.filter(s => s.type === 'Inbred');
@@ -1710,7 +1711,11 @@ async function initDASurvey() {
   makePieChart('chart-whatdone', dEnt.map(([k])=>k), dEnt.map(([,v])=>v), CHART_COLORS_MIXED);
 
   // Section 5
-  const availSeeds = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
+  const availSeeds  = JSON.parse(localStorage.getItem('ezseed_da_available_seeds') || 'null');
+  const savedSacks  = JSON.parse(localStorage.getItem('ezseed_da_seed_sacks') || 'null');
+  const bulkPreview = savedSacks ? buildBulkPreview() : null;
+  const bulkIsDone  = Array.isArray(bulkPreview) && bulkPreview.length === 0;
+  let renderSackDoneList = () => {};
   const formEl     = document.getElementById('da-allocation-form');
   const summaryEl  = document.getElementById('da-allocation-summary');
 
@@ -1721,11 +1726,14 @@ async function initDASurvey() {
       const list = document.getElementById('da-allocation-summary-list');
       if (list) list.innerHTML = availSeeds.map(id => { const seed=getSeed(id); if(!seed) return ''; return `<div class="sum-row"><div class="sum-row-left"><span class="sum-row-name">${seed.name}</span><span class="badge badge-filled">${seed.type}</span>${buildStars(seed)}</div></div>`; }).join('');
     }
-    document.getElementById('da-change-allocation-btn')?.addEventListener('click', () => {
+    const changeAllocBtn = document.getElementById('da-change-allocation-btn');
+    if (bulkIsDone && changeAllocBtn) changeAllocBtn.style.display = 'none';
+    changeAllocBtn?.addEventListener('click', () => {
       localStorage.removeItem('ezseed_da_available_seeds');
       localStorage.removeItem('ezseed_da_allocated_seeds');
       localStorage.removeItem('ezseed_da_seed_sacks');
       localStorage.removeItem('ezseed_da_vrs_counts');
+      localStorage.removeItem('ezseed_da_procurement_budget');
       window.location.reload();
     });
   } else {
@@ -1766,6 +1774,7 @@ async function initDASurvey() {
       localStorage.setItem('ezseed_da_available_seeds', JSON.stringify(rec));
       localStorage.setItem('ezseed_da_allocated_seeds', JSON.stringify(rec));
       if (vrsResult) localStorage.setItem('ezseed_da_vrs_counts', JSON.stringify(vrsResult.counts));
+      localStorage.setItem('ezseed_da_procurement_budget', budgetInput?.value || '10000000');
       window.location.reload();
     });
   }
@@ -1781,9 +1790,6 @@ async function initDASurvey() {
   }
 
   // Section 6
-  const savedSacks    = JSON.parse(localStorage.getItem('ezseed_da_seed_sacks') || 'null');
-  const bulkPreview   = savedSacks ? buildBulkPreview() : null;
-  const bulkIsDone    = Array.isArray(bulkPreview) && bulkPreview.length === 0;
   const sackNoSeedsEl = document.getElementById('da-sack-no-seeds');
   const sackDoneEl    = document.getElementById('da-sack-done');
   const sackFormEl    = document.getElementById('da-sack-form');
@@ -1796,28 +1802,31 @@ async function initDASurvey() {
     if (sackNoSeedsEl) sackNoSeedsEl.style.display = 'none';
     if (sackDoneEl)    sackDoneEl.style.display = '';
     if (sackFormEl)    sackFormEl.style.display = 'none';
-    const doneList  = document.getElementById('da-sack-done-list');
-    const doneTotal = document.getElementById('da-sack-done-total');
-    if (doneList) {
-      doneList.innerHTML = availSeeds.map(id => {
-        const seed = getSeed(id); if (!seed) return '';
-        const tot  = savedSacks[id] || 0;
-        const used = getKnownFarmers().reduce((sum, farmer) => {
-          const orders = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
-          return sum + orders.reduce((s, o) => { const m = o.seeds && o.seeds.find(sd => sd.id === id); return s + (m ? m.sacks : 0); }, 0);
-        }, 0);
-        const rem = tot - used;
-        return `<div class="bulk-preview-row">
-          <div class="bulk-preview-left"><span class="bulk-preview-farmer">${seed.name}</span></div>
-          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-            <span class="badge badge-filled">${seed.type}</span>
-            <span class="sack-pill-dark">${tot} sacks</span>
-            <span class="sack-remaining${rem < 0 ? ' sack-remaining-over' : ''}">${rem} / ${tot} left</span>
-          </div>
-        </div>`;
-      }).join('');
-    }
-    if (doneTotal) doneTotal.textContent = `Total: ${Object.values(savedSacks).reduce((s, n) => s + n, 0)} sacks`;
+    renderSackDoneList = () => {
+      const doneList  = document.getElementById('da-sack-done-list');
+      const doneTotal = document.getElementById('da-sack-done-total');
+      if (doneList) {
+        doneList.innerHTML = availSeeds.map(id => {
+          const seed = getSeed(id); if (!seed) return '';
+          const tot  = savedSacks[id] || 0;
+          const used = getKnownFarmers().reduce((sum, farmer) => {
+            const orders = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
+            return sum + orders.reduce((s, o) => { const m = o.seeds && o.seeds.find(sd => sd.id === id); return s + (m ? m.sacks : 0); }, 0);
+          }, 0);
+          const rem = tot - used;
+          return `<div class="bulk-preview-row">
+            <div class="bulk-preview-left"><span class="bulk-preview-farmer">${seed.name}</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+              <span class="badge badge-filled">${seed.type}</span>
+              <span class="sack-pill-dark">${tot} sacks</span>
+              <span class="sack-remaining${rem < 0 ? ' sack-remaining-over' : ''}">${rem} / ${tot} left</span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      if (doneTotal) doneTotal.textContent = `Total: ${Object.values(savedSacks).reduce((s, n) => s + n, 0)} sacks`;
+    };
+    renderSackDoneList();
     const changeBtn = document.getElementById('da-change-sacks-btn');
     if (changeBtn && bulkIsDone) changeBtn.style.display = 'none';
     changeBtn?.addEventListener('click', () => { localStorage.removeItem('ezseed_da_seed_sacks'); window.location.reload(); });
@@ -1825,13 +1834,26 @@ async function initDASurvey() {
     if (sackNoSeedsEl) sackNoSeedsEl.style.display = 'none';
     if (sackDoneEl)    sackDoneEl.style.display = 'none';
     if (sackFormEl)    sackFormEl.style.display = '';
-    const sackBudgetInput = document.getElementById('sack-budget-input');
-    const sackInputsEl    = document.getElementById('sack-alloc-inputs');
-    const sackTotalEl     = document.getElementById('sack-alloc-total');
-    const sackWarningEl   = document.getElementById('sack-over-warning');
+    const sackKgInput   = document.getElementById('sack-kg-input');
+    const sackInputsEl  = document.getElementById('sack-alloc-inputs');
+    const sackTotalEl   = document.getElementById('sack-alloc-total');
+    const sackWarningEl = document.getElementById('sack-over-warning');
+    function deriveTotalSacks(kgPerSack) {
+      const budget    = parseInt(localStorage.getItem('ezseed_da_procurement_budget') || '0');
+      const vrsCounts = JSON.parse(localStorage.getItem('ezseed_da_vrs_counts') || 'null');
+      if (budget > 0 && vrsCounts && _seedPrices) {
+        const totalCount = Object.values(vrsCounts).reduce((a, b) => a + b, 0);
+        if (totalCount > 0) {
+          const wtdAvgPrice = availSeeds.reduce((sum, id) => sum + ((vrsCounts[id] || 0) / totalCount) * (_seedPrices[id] || 0), 0);
+          if (wtdAvgPrice > 0) return Math.floor(budget / (wtdAvgPrice * kgPerSack));
+        }
+      }
+      return ALLOTTED_SACKS * getKnownFarmers().length;
+    }
     function renderSackInputs() {
-      const budget    = parseInt(sackBudgetInput?.value || '200');
-      const autoAlloc = buildSackAllocation(budget, availSeeds);
+      const kgPerSack  = parseInt(sackKgInput?.value || '50');
+      const totalSacks = deriveTotalSacks(kgPerSack);
+      const autoAlloc  = buildSackAllocation(totalSacks, availSeeds);
       if (!sackInputsEl) return;
       sackInputsEl.innerHTML = availSeeds.map(id => {
         const seed = getSeed(id); if (!seed) return '';
@@ -1850,12 +1872,16 @@ async function initDASurvey() {
       updateSackTotal();
     }
     function updateSackTotal() {
-      const budget = parseInt(sackBudgetInput?.value || '200');
-      const total  = [...document.querySelectorAll('.sack-qty-input')].reduce((s, inp) => s + (parseInt(inp.value) || 0), 0);
-      if (sackTotalEl) { sackTotalEl.style.color = total === budget ? '#16a34a' : total > budget ? '#dc2626' : 'var(--text-olive)'; sackTotalEl.textContent = `Total: ${total} / ${budget} sacks`; }
-      if (sackWarningEl) sackWarningEl.style.display = total > budget ? '' : 'none';
+      const kgPerSack  = parseInt(sackKgInput?.value || '50');
+      const totalSacks = deriveTotalSacks(kgPerSack);
+      const total      = [...document.querySelectorAll('.sack-qty-input')].reduce((s, inp) => s + (parseInt(inp.value) || 0), 0);
+      if (sackTotalEl) {
+        sackTotalEl.style.color = total === totalSacks ? '#16a34a' : total > totalSacks ? '#dc2626' : 'var(--text-olive)';
+        sackTotalEl.textContent = `Total: ${total} / ${totalSacks} sacks`;
+      }
+      if (sackWarningEl) sackWarningEl.style.display = total > totalSacks ? '' : 'none';
     }
-    sackBudgetInput?.addEventListener('input', renderSackInputs);
+    sackKgInput?.addEventListener('input', renderSackInputs);
     renderSackInputs();
     document.getElementById('sack-confirm-btn')?.addEventListener('click', () => {
       const allocs = {};
@@ -1929,6 +1955,7 @@ async function initDASurvey() {
         const current = buildBulkPreview();
         if (!current || current.length === 0) return;
         executeBulkAllocation(current);
+        renderSackDoneList();
         if (bulkFormEl) bulkFormEl.style.display = 'none';
         if (bulkDoneEl) {
           bulkDoneEl.style.display = '';
@@ -1937,6 +1964,8 @@ async function initDASurvey() {
         }
         const changeBtn = document.getElementById('da-change-sacks-btn');
         if (changeBtn) changeBtn.style.display = 'none';
+        const changeAllocBtn = document.getElementById('da-change-allocation-btn');
+        if (changeAllocBtn) changeAllocBtn.style.display = 'none';
       });
     }
   }
