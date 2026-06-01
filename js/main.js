@@ -316,35 +316,54 @@ function buildBulkPreview() {
   const slotted = pending.slice(0, maxFarmers);
   const remaining = seedSacks ? { ...seedSacks } : Object.fromEntries(available.map(id => [id, ALLOTTED_SACKS]));
   return slotted.map(({ farmer, orderId }) => {
-    const inbredPick = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]')[0];
-    const hybridPick = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]')[0];
-    const preferredId = [inbredPick, hybridPick].find(id => id && available.includes(id) && (remaining[id] || 0) >= ALLOTTED_SACKS);
-    let seedId, isMatch, isClosest;
-    if (preferredId) {
-      seedId = preferredId; isMatch = true; isClosest = false;
-    } else {
-      const primaryPick = [inbredPick, hybridPick].find(id => id && available.includes(id));
-      const withSacks   = available.filter(id => (remaining[id] || 0) >= ALLOTTED_SACKS);
-      if (withSacks.length === 0) {
-        seedId = available[0];
-      } else if (primaryPick) {
-        seedId = findClosestSeed(primaryPick, withSacks);
-      } else {
-        seedId = withSacks[0] || available[0];
-      }
-      isMatch = false; isClosest = !!primaryPick && seedId !== primaryPick;
+    const inbredPick  = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_inbred`) || '[]')[0];
+    const hybridPick  = JSON.parse(localStorage.getItem(`ezseed_${farmer}_survey_hybrid`) || '[]')[0];
+    const primaryPick = [inbredPick, hybridPick].find(id => id && available.includes(id));
+    const preferredFull = [inbredPick, hybridPick].find(id => id && available.includes(id) && (remaining[id] || 0) >= ALLOTTED_SACKS);
+    if (preferredFull) {
+      remaining[preferredFull] -= ALLOTTED_SACKS;
+      return { farmer, orderId, seeds: [{ id: preferredFull, sacks: ALLOTTED_SACKS, isMatch: true, isClosest: false }] };
     }
-    if (remaining[seedId] !== undefined) remaining[seedId] -= ALLOTTED_SACKS;
-    return { farmer, orderId, seedId, sacks: ALLOTTED_SACKS, isMatch, isClosest };
+    const preferredPartialSacks = primaryPick ? Math.max(0, remaining[primaryPick] || 0) : 0;
+    const neededFromAlt = ALLOTTED_SACKS - preferredPartialSacks;
+    const altFull = available.filter(id => id !== primaryPick && (remaining[id] || 0) >= neededFromAlt);
+    const altAny  = available.filter(id => id !== primaryPick && (remaining[id] || 0) > 0);
+    let altId = null;
+    if (altFull.length > 0) {
+      altId = primaryPick ? findClosestSeed(primaryPick, altFull) : altFull[0];
+    } else if (altAny.length > 0) {
+      altId = primaryPick ? findClosestSeed(primaryPick, altAny) : altAny[0];
+    } else if (!primaryPick) {
+      altId = available[0];
+    }
+    const seeds = [];
+    if (preferredPartialSacks > 0 && primaryPick) {
+      remaining[primaryPick] -= preferredPartialSacks;
+      seeds.push({ id: primaryPick, sacks: preferredPartialSacks, isMatch: true, isClosest: false });
+    }
+    if (altId) {
+      const altSacks = Math.min(neededFromAlt, remaining[altId] || 0);
+      if (altSacks > 0) {
+        remaining[altId] -= altSacks;
+        seeds.push({ id: altId, sacks: altSacks, isMatch: false, isClosest: !!primaryPick });
+      }
+    }
+    if (seeds.length === 0) {
+      const fallbackId = available[0];
+      const fallbackSacks = Math.min(ALLOTTED_SACKS, remaining[fallbackId] || 0);
+      if (remaining[fallbackId] !== undefined) remaining[fallbackId] -= fallbackSacks;
+      seeds.push({ id: fallbackId, sacks: fallbackSacks, isMatch: false, isClosest: false });
+    }
+    return { farmer, orderId, seeds };
   });
 }
 
 function executeBulkAllocation(preview) {
-  preview.forEach(({ farmer, orderId, seedId, sacks }) => {
+  preview.forEach(({ farmer, orderId, seeds }) => {
     const orders = JSON.parse(localStorage.getItem(`ezseed_${farmer}_orders`) || '[]');
     const idx = orders.findIndex(o => o.id === orderId);
     if (idx === -1) return;
-    orders[idx].seeds  = [{ id: seedId, sacks }];
+    orders[idx].seeds  = seeds.map(({ id, sacks }) => ({ id, sacks }));
     orders[idx].status = 'decision_made';
     localStorage.setItem(`ezseed_${farmer}_orders`, JSON.stringify(orders));
   });
@@ -1906,21 +1925,24 @@ async function initDASurvey() {
     const preview = bulkPreview;
 
     function renderBulkPreviewHTML(rows) {
-      return rows.map(({ farmer, seedId, sacks, isMatch, isClosest }) => {
-        const profile = getProfile(farmer);
-        const seed    = getSeed(seedId);
-        if (!seed) return '';
-        const pickBadge    = isMatch   ? '<span class="badge badge-your-pick">&#10003; Their Pick</span>' : '';
-        const closestBadge = isClosest ? '<span class="badge badge-closest">~ Closest Match</span>' : '';
-        return `<div class="bulk-preview-row">
-          <div class="bulk-preview-left">
-            <span class="bulk-preview-farmer">${profile.name || farmer}</span>
+      return rows.map(({ farmer, seeds }) => {
+        const profile   = getProfile(farmer);
+        const seedsHTML = seeds.map(({ id, sacks, isMatch, isClosest }) => {
+          const seed = getSeed(id);
+          if (!seed) return '';
+          const pickBadge    = isMatch   ? '<span class="badge badge-your-pick">&#10003; Their Pick</span>' : '';
+          const closestBadge = isClosest ? '<span class="badge badge-closest">~ Closest Match</span>' : '';
+          return `<div style="display:flex;align-items:center;gap:0.25rem 0.5rem;flex-wrap:wrap;margin-top:0.2rem;">
             <span class="bulk-preview-seed">${seed.name}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
             <span class="badge badge-filled">${seed.type}</span>
             ${pickBadge}${closestBadge}
             <span class="sack-pill-dark">${sacks} sacks</span>
+          </div>`;
+        }).join('');
+        return `<div class="bulk-preview-row">
+          <div class="bulk-preview-left">
+            <span class="bulk-preview-farmer">${profile.name || farmer}</span>
+            ${seedsHTML}
           </div>
         </div>`;
       }).join('');
